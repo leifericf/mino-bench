@@ -1,0 +1,43 @@
+(ns mino.bench)
+
+(defn bench
+  "Run body-fn for n iterations, return a result map with timing and GC data."
+  [label n body-fn]
+  (let [gc-before  (gc-stats)
+        start      (nano-time)
+        _          (dotimes [_ n] (body-fn))
+        elapsed    (- (nano-time) start)
+        gc-after   (gc-stats)]
+    {:label          label
+     :iterations     n
+     :total-ns       elapsed
+     :mean-ns        (quot elapsed n)
+     :gc-collections (- (:collections gc-after) (:collections gc-before))
+     :gc-bytes-freed (- (:bytes-freed gc-after) (:bytes-freed gc-before))}))
+
+(defn- format-ns
+  "Format nanoseconds as a human-readable string."
+  [ns]
+  (cond
+    (>= ns 1000000000) (str (format "%.2f" (/ (float ns) 1000000000.0)) "s")
+    (>= ns 1000000)    (str (format "%.2f" (/ (float ns) 1000000.0)) "ms")
+    (>= ns 1000)       (str (format "%.2f" (/ (float ns) 1000.0)) "us")
+    :else               (str ns "ns")))
+
+(defn report
+  "Print a formatted benchmark result."
+  [result]
+  (println (str "  " (:label result)
+               ": " (format-ns (:total-ns result))
+               " total, " (format-ns (:mean-ns result))
+               "/op (" (:iterations result) " iters"
+               ", " (:gc-collections result) " GCs"
+               ", " (quot (:gc-bytes-freed result) 1024) "KB freed)")))
+
+(defn run-suite
+  "Run a suite of benchmarks. Each entry is [label n body-fn]."
+  [suite-name entries]
+  (println (str "== " suite-name " =="))
+  (doseq [[label n body-fn] entries]
+    (report (bench label n body-fn)))
+  (println))

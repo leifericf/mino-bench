@@ -1,0 +1,16 @@
+(require "benchmarks/cons_bench.mino")
+(require "benchmarks/vec_bench.mino")
+(require "benchmarks/map_bench.mino")
+(require "benchmarks/intern_bench.mino")
+(require "benchmarks/eval_bench.mino")
+
+(println "=== mino-bench: mino-level benchmarks ===")
+(println)
+
+(benchmarks.cons-bench/run)
+(benchmarks.vec-bench/run)
+(benchmarks.map-bench/run)
+(benchmarks.intern-bench/run)
+(benchmarks.eval-bench/run)
+
+(println "=== done ===")

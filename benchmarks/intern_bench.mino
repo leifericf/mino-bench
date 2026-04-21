@@ -1,0 +1,15 @@
+(ns benchmarks.intern-bench)
+(require '[mino.bench :as bench])
+
+(defn run []
+  (bench/run-suite "Symbol/keyword interning"
+    [["intern 100 new symbols" 1000
+      (fn [] (dotimes [i 100]
+               (symbol (str "bench-sym-" i))))]
+     ["intern 100 new keywords" 1000
+      (fn [] (dotimes [i 100]
+               (keyword (str "bench-kw-" i))))]
+     ["lookup existing symbol" 100000
+      (fn [] (symbol "+"))]
+     ["lookup existing keyword" 100000
+      (fn [] (keyword "label"))]]))
