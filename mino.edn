@@ -1,0 +1,42 @@
+;; Bootstrap (first time only):
+;;   cd mino && cc -std=c99 -O2 -Isrc -o mino src/*.c main.c -lm && cd ..
+;; Then: ./mino/mino task build, ./mino/mino task bench, etc.
+
+{:paths ["lib" "mino/lib"]
+ :tasks
+ {build           {:doc  "Build the mino binary and C benchmark binaries"
+                   :task mino.tasks.builtin/build}
+  clean           {:doc  "Remove build artifacts"
+                   :task mino.tasks.builtin/clean}
+
+  ;; C-level benchmarks (raw data structure ops via C API)
+  bench-c         {:doc  "Run all C-level benchmarks"
+                   :deps [build]
+                   :task mino.tasks.builtin/bench-c}
+  bench-c-vec     {:doc  "C benchmark: vector operations"
+                   :deps [build]
+                   :task mino.tasks.builtin/bench-c-vec}
+  bench-c-map     {:doc  "C benchmark: map operations"
+                   :deps [build]
+                   :task mino.tasks.builtin/bench-c-map}
+  bench-c-seq     {:doc  "C benchmark: sequence operations"
+                   :deps [build]
+                   :task mino.tasks.builtin/bench-c-seq}
+  bench-c-perf    {:doc  "C benchmark: core operation profiling"
+                   :deps [build]
+                   :task mino.tasks.builtin/bench-c-perf}
+
+  ;; Mino-level benchmarks (end-to-end through eval)
+  bench           {:doc  "Run all mino-level benchmarks"
+                   :deps [build]
+                   :task mino.tasks.builtin/bench}
+
+  ;; Stress and fuzz
+  stress          {:doc  "Run GC stress test"
+                   :deps [build]
+                   :task mino.tasks.builtin/stress}
+  stress-sharded  {:doc  "Run all GC stress shards"
+                   :deps [build]
+                   :task mino.tasks.builtin/stress-sharded}
+  fuzz-build      {:doc  "Build the fuzz reader binary"
+                   :task mino.tasks.builtin/fuzz-build}}}
