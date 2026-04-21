@@ -2,32 +2,32 @@
 
 Benchmarks, stress tests, and fuzz testing for [mino](https://github.com/leifericf/mino).
 
-## Build
+## Bootstrap
 
 ```
 git submodule update --init
-make
+cd mino && cc -std=c99 -O2 -Isrc -o mino src/*.c main.c -lm && cd ..
 ```
 
-## Benchmarks
+## Tasks
 
 ```
-make bench          # vector operations
-make bench-map      # map operations
-make bench-seq      # sequence operations
-make bench-perf     # core operation profiling
+./mino/mino task              # list all tasks
+./mino/mino task build        # build mino binary and C benchmarks
+./mino/mino task clean        # remove build artifacts
+
+./mino/mino task bench        # mino-level benchmarks (end-to-end)
+./mino/mino task bench-c      # C-level benchmarks (raw data structures)
+./mino/mino task bench-c-vec  # C benchmark: vectors only
+./mino/mino task bench-c-map  # C benchmark: maps only
+./mino/mino task bench-c-seq  # C benchmark: sequences only
+./mino/mino task bench-c-perf # C benchmark: core profiling
+
+./mino/mino task stress          # GC stress test
+./mino/mino task stress-sharded  # all GC stress shards
+./mino/mino task fuzz-build      # build fuzz reader
 ```
 
-## Stress tests
+## License
 
-```
-make stress             # single stress test with GC stress enabled
-make stress-sharded     # all 11 GC stress shards
-```
-
-## Fuzz testing
-
-```
-make fuzz-stdin
-echo '(+ 1 2)' | ./fuzz/fuzz_reader
-```
+ISC
