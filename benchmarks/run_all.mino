@@ -3,6 +3,7 @@
 (require "benchmarks/map_bench.mino")
 (require "benchmarks/intern_bench.mino")
 (require "benchmarks/eval_bench.mino")
+(require "benchmarks/micro_bench.mino")
 
 (println "=== mino-bench: mino-level benchmarks ===")
 (println)
@@ -12,5 +13,18 @@
 (benchmarks.map-bench/run)
 (benchmarks.intern-bench/run)
 (benchmarks.eval-bench/run)
+(benchmarks.micro-bench/run)
+
+;; Write standardized report
+(let [results  (mino.bench/results)
+      gc-final (gc-stats)
+      report   (str ";; mino-bench report\n"
+                    ";; date: " (time-ms) "\n"
+                    ";; gc-final: " (pr-str gc-final) "\n"
+                    ";;\n"
+                    ";; Each entry: {:suite S :label L :iterations N :total-ns T :mean-ns M :gc-collections G :gc-bytes-freed F}\n\n"
+                    (apply str (map (fn [r] (str (pr-str r) "\n")) results)))]
+  (spit "results/latest.edn" report)
+  (println (str "Report written to results/latest.edn (" (count results) " benchmarks)")))
 
 (println "=== done ===")

@@ -34,10 +34,21 @@
                ", " (:gc-collections result) " GCs"
                ", " (quot (:gc-bytes-freed result) 1024) "KB freed)")))
 
+(def ^:dynamic *results*
+  "Atom collecting all benchmark results for report generation."
+  (atom []))
+
 (defn run-suite
   "Run a suite of benchmarks. Each entry is [label n body-fn]."
   [suite-name entries]
   (println (str "== " suite-name " =="))
   (doseq [[label n body-fn] entries]
-    (report (bench label n body-fn)))
+    (let [r (bench label n body-fn)]
+      (swap! *results* conj (assoc r :suite suite-name))
+      (report r)))
   (println))
+
+(defn results
+  "Return all collected benchmark results."
+  []
+  @*results*)

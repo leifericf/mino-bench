@@ -1,0 +1,134 @@
+(ns benchmarks.micro-bench)
+(require '[mino.bench :as bench])
+
+(defn run []
+  ;; --- Environment lookup cost ---
+  (bench/run-suite "Environment lookup"
+    [["local var (let binding)" 100000
+      (fn [] (let [x 42] x))]
+     ["deeply nested let (10 deep)" 10000
+      (fn [] (let [a 1]
+               (let [b 2]
+                 (let [c 3]
+                   (let [d 4]
+                     (let [e 5]
+                       (let [f 6]
+                         (let [g 7]
+                           (let [h 8]
+                             (let [i 9]
+                               (let [j 10]
+                                 (+ a b c d e f g h i j))))))))))))]
+     ["global var lookup" 100000
+      (fn [] +)]
+     ["closure capture (1 var)" 100000
+      (let [captured 42]
+        (fn [] captured))]
+     ["closure capture (5 vars)" 100000
+      (let [a 1 b 2 c 3 d 4 e 5]
+        (fn [] (+ a b c d e)))]])
+
+  ;; --- Allocation pressure ---
+  (bench/run-suite "Allocation pressure"
+    [["cons cell creation" 100000
+      (fn [] (cons 1 nil))]
+     ["small vector [1 2 3]" 100000
+      (fn [] [1 2 3])]
+     ["small map {:a 1}" 100000
+      (fn [] {:a 1})]
+     ["integer boxing" 1000000
+      (fn [] 42)]
+     ["string creation" 100000
+      (fn [] (str "hello" " " "world"))]
+     ["keyword creation (existing)" 1000000
+      (fn [] :existing-keyword)]])
+
+  ;; --- Sequence overhead: lazy vs eager ---
+  (bench/run-suite "Lazy vs eager sequences"
+    [["(range 100) -- lazy creation" 10000
+      (fn [] (range 100))]
+     ["(doall (range 100)) -- force lazy" 1000
+      (fn [] (doall (range 100)))]
+     ["(rangev 100) -- eager vector" 10000
+      (fn [] (rangev 100))]
+     ["(into [] (range 100)) -- lazy->vec" 1000
+      (fn [] (into [] (range 100)))]
+     ["(mapv inc (rangev 100))" 1000
+      (fn [] (mapv inc (rangev 100)))]
+     ["(map inc (range 100)) -- lazy" 1000
+      (fn [] (doall (map inc (range 100))))]
+     ["(filterv odd? (rangev 100))" 1000
+      (fn [] (filterv odd? (rangev 100)))]
+     ["(filter odd? (range 100)) -- lazy" 1000
+      (fn [] (doall (filter odd? (range 100))))]])
+
+  ;; --- Dispatch overhead ---
+  (bench/run-suite "Function dispatch"
+    [["primitive fn: (+ 1 2)" 100000
+      (fn [] (+ 1 2))]
+     ["user fn (0 args)" 100000
+      (let [f (fn [] nil)]
+        (fn [] (f)))]
+     ["user fn (1 arg)" 100000
+      (let [f (fn [x] x)]
+        (fn [] (f 42)))]
+     ["user fn (3 args)" 100000
+      (let [f (fn [a b c] (+ a b c))]
+        (fn [] (f 1 2 3)))]
+     ["user fn (5 args)" 100000
+      (let [f (fn [a b c d e] (+ a b c d e))]
+        (fn [] (f 1 2 3 4 5)))]
+     ["apply with 3 args" 10000
+      (let [f (fn [a b c] (+ a b c))]
+        (fn [] (apply f [1 2 3])))]
+     ["higher-order: (map inc [1 2 3])" 10000
+      (fn [] (doall (map inc [1 2 3])))]])
+
+  ;; --- Loop/recur ---
+  (bench/run-suite "Loop/recur"
+    [["loop 100 iters" 10000
+      (fn [] (loop [i 0] (if (>= i 100) i (recur (inc i)))))]
+     ["loop 1000 iters" 1000
+      (fn [] (loop [i 0] (if (>= i 1000) i (recur (inc i)))))]
+     ["loop 10000 iters" 100
+      (fn [] (loop [i 0] (if (>= i 10000) i (recur (inc i)))))]
+     ["dotimes 100" 10000
+      (fn [] (dotimes [_ 100] nil))]
+     ["dotimes 1000" 1000
+      (fn [] (dotimes [_ 1000] nil))]
+     ["reduce + over 100 ints" 10000
+      (let [v (rangev 100)]
+        (fn [] (reduce + 0 v)))]
+     ["reduce + over 1000 ints" 1000
+      (let [v (rangev 1000)]
+        (fn [] (reduce + 0 v)))]])
+
+  ;; --- String operations ---
+  (bench/run-suite "String operations"
+    [["str concat (3 short)" 100000
+      (fn [] (str "a" "b" "c"))]
+     ["str concat (10 short)" 10000
+      (fn [] (str "a" "b" "c" "d" "e" "f" "g" "h" "i" "j"))]
+     ["format with 1 arg" 10000
+      (fn [] (format "%d" 42))]
+     ["subs (middle of 100-char)" 100000
+      (let [s (apply str (repeat 100 "x"))]
+        (fn [] (subs s 25 75)))]
+     ["split on space" 10000
+      (fn [] (split "one two three four five" " "))]
+     ["join with comma" 10000
+      (fn [] (str/join "," ["a" "b" "c" "d" "e"]))]])
+
+  ;; --- Reader (parse) overhead ---
+  (bench/run-suite "Reader overhead"
+    [["read-string simple" 10000
+      (fn [] (read-string "42"))]
+     ["read-string symbol" 10000
+      (fn [] (read-string "foo"))]
+     ["read-string list" 10000
+      (fn [] (read-string "(+ 1 2 3)"))]
+     ["read-string vector" 10000
+      (fn [] (read-string "[1 2 3 4 5]"))]
+     ["read-string map" 10000
+      (fn [] (read-string "{:a 1 :b 2 :c 3}"))]
+     ["read-string nested" 1000
+      (fn [] (read-string "(let [x (+ 1 2)] (if (> x 0) (* x 2) (- x)))"))]]))
