@@ -18,3 +18,5 @@
      ["dissoc from 100-key map" 1000
       (let [m (into {} (map (fn [i] [(keyword (str "k" i)) i]) (range 100)))]
         (fn [] (dissoc m :k50)))]]))
+
+(run)

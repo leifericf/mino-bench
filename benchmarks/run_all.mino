@@ -1,30 +1,49 @@
-(require "benchmarks/cons_bench.mino")
-(require "benchmarks/vec_bench.mino")
-(require "benchmarks/map_bench.mino")
-(require "benchmarks/intern_bench.mino")
-(require "benchmarks/eval_bench.mino")
-(require "benchmarks/micro_bench.mino")
+;; Run each benchmark file in a separate mino process for isolation.
+;; Each process gets a fresh heap, so GC pressure from one benchmark
+;; does not affect others.
 
-(println "=== mino-bench: mino-level benchmarks ===")
+(def ^:private mino-bin "mino/mino")
+
+(def ^:private bench-files
+  ["benchmarks/cons_bench.mino"
+   "benchmarks/vec_bench.mino"
+   "benchmarks/map_bench.mino"
+   "benchmarks/intern_bench.mino"
+   "benchmarks/eval_bench.mino"
+   "benchmarks/micro_bench.mino"])
+
+(defn- extract-edn-lines
+  "Extract lines prefixed with ;edn; from output, return as vector of strings."
+  [output]
+  (filterv #(starts-with? % ";edn; ")
+           (split output "\n")))
+
+(defn- strip-prefix [line]
+  (subs line 6))
+
+(println "=== mino-bench: mino-level benchmarks (isolated) ===")
 (println)
 
-(benchmarks.cons-bench/run)
-(benchmarks.vec-bench/run)
-(benchmarks.map-bench/run)
-(benchmarks.intern-bench/run)
-(benchmarks.eval-bench/run)
-(benchmarks.micro-bench/run)
+(let [all-edn (atom [])]
+  (doseq [f bench-files]
+    (let [output   (sh! mino-bin f)
+          edn-lines (extract-edn-lines output)
+          ;; Print the human-readable lines (non-edn)
+          human    (filterv #(not (starts-with? % ";edn; "))
+                            (split output "\n"))]
+      (doseq [line human]
+        (when (not (= line ""))
+          (println line)))
+      (doseq [line edn-lines]
+        (swap! all-edn conj (strip-prefix line)))))
 
-;; Write standardized report
-(let [results  (mino.bench/results)
-      gc-final (gc-stats)
-      report   (str ";; mino-bench report\n"
+  ;; Write combined report
+  (let [report (str ";; mino-bench report (isolated processes)\n"
                     ";; date: " (time-ms) "\n"
-                    ";; gc-final: " (pr-str gc-final) "\n"
                     ";;\n"
-                    ";; Each entry: {:suite S :label L :iterations N :total-ns T :mean-ns M :gc-collections G :gc-bytes-freed F}\n\n"
-                    (apply str (map (fn [r] (str (pr-str r) "\n")) results)))]
-  (spit "results/latest.edn" report)
-  (println (str "Report written to results/latest.edn (" (count results) " benchmarks)")))
+                    (apply str (map (fn [line] (str line "\n")) @all-edn)))]
+    (spit "results/latest.edn" report)
+    (println)
+    (println (str "Report written to results/latest.edn (" (count @all-edn) " benchmarks)"))))
 
 (println "=== done ===")

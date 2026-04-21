@@ -24,8 +24,8 @@
     (>= ns 1000)       (str (format "%.2f" (/ (float ns) 1000.0)) "us")
     :else               (str ns "ns")))
 
-(defn report
-  "Print a formatted benchmark result."
+(defn report-human
+  "Print a human-readable benchmark result to stderr."
   [result]
   (println (str "  " (:label result)
                ": " (format-ns (:total-ns result))
@@ -34,21 +34,19 @@
                ", " (:gc-collections result) " GCs"
                ", " (quot (:gc-bytes-freed result) 1024) "KB freed)")))
 
-(def ^:dynamic *results*
-  "Atom collecting all benchmark results for report generation."
-  (atom []))
+(defn report-edn
+  "Print an EDN result map to stdout (one per line, machine-readable)."
+  [result]
+  (println (pr-str result)))
 
 (defn run-suite
-  "Run a suite of benchmarks. Each entry is [label n body-fn]."
+  "Run a suite of benchmarks. Each entry is [label n body-fn].
+   Prints human-readable output AND one EDN map per result line."
   [suite-name entries]
   (println (str "== " suite-name " =="))
   (doseq [[label n body-fn] entries]
-    (let [r (bench label n body-fn)]
-      (swap! *results* conj (assoc r :suite suite-name))
-      (report r)))
+    (let [r (assoc (bench label n body-fn) :suite suite-name)]
+      (report-human r)
+      ;; EDN line prefixed with ;edn; so the runner can extract it
+      (println (str ";edn; " (pr-str r)))))
   (println))
-
-(defn results
-  "Return all collected benchmark results."
-  []
-  @*results*)

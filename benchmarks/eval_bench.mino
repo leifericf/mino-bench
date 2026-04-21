@@ -20,3 +20,5 @@
               20))]
      ["map + filter + reduce pipeline" 1000
       (fn [] (reduce + 0 (filter odd? (map inc (range 100)))))]]))
+
+(run)

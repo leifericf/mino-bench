@@ -22,3 +22,5 @@
       (let [v (into [] (range 1000))]
         (fn [] (loop [acc v]
                  (if (empty? acc) acc (recur (pop acc))))))]]))
+
+(run)

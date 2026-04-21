@@ -13,3 +13,5 @@
       (fn [] (symbol "+"))]
      ["lookup existing keyword" 100000
       (fn [] (keyword "label"))]]))
+
+(run)
