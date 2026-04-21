@@ -1,73 +1,73 @@
 ;; mino-bench report (isolated processes)
-;; date: 11.984
+;; date: 8.206
 ;;
-{:label "build 1000-element list", :iterations 1000, :total-ns 2546191000, :mean-ns 2546191, :gc-collections 189, :gc-bytes-freed 1012530420, :suite "Cons list operations"}
-{:label "build 10000-element list", :iterations 100, :total-ns 3242479000, :mean-ns 32424790, :gc-collections 108, :gc-bytes-freed 1004212413, :suite "Cons list operations"}
-{:label "walk 1000-element list", :iterations 1000, :total-ns 3543357000, :mean-ns 3543357, :gc-collections 132, :gc-bytes-freed 1318811897, :suite "Cons list operations"}
-{:label "walk 10000-element list", :iterations 100, :total-ns 3534079000, :mean-ns 35340790, :gc-collections 132, :gc-bytes-freed 1318595109, :suite "Cons list operations"}
-{:label "conj 1000 elements", :iterations 1000, :total-ns 2763465000, :mean-ns 2763465, :gc-collections 215, :gc-bytes-freed 1283853501, :suite "Vector operations"}
-{:label "conj 10000 elements", :iterations 100, :total-ns 3190922000, :mean-ns 31909220, :gc-collections 195, :gc-bytes-freed 1290496932, :suite "Vector operations"}
-{:label "nth random on 1000-vec", :iterations 10000, :total-ns 34865000, :mean-ns 3486, :gc-collections 2, :gc-bytes-freed 13289501, :suite "Vector operations"}
-{:label "nth random on 10000-vec", :iterations 10000, :total-ns 35955000, :mean-ns 3595, :gc-collections 2, :gc-bytes-freed 13523615, :suite "Vector operations"}
-{:label "assoc on 1000-vec", :iterations 1000, :total-ns 743000, :mean-ns 743, :gc-collections 0, :gc-bytes-freed 0, :suite "Vector operations"}
-{:label "pop 1000-vec to empty", :iterations 100, :total-ns 240384000, :mean-ns 2403840, :gc-collections 16, :gc-bytes-freed 108915760, :suite "Vector operations"}
-{:label "assoc 100 keys", :iterations 1000, :total-ns 444196000, :mean-ns 444196, :gc-collections 56, :gc-bytes-freed 195627675, :suite "Map operations"}
-{:label "assoc 1000 keys", :iterations 100, :total-ns 518572000, :mean-ns 5185720, :gc-collections 60, :gc-bytes-freed 209054787, :suite "Map operations"}
-{:label "get on 100-key map", :iterations 10000, :total-ns 29505000, :mean-ns 2950, :gc-collections 3, :gc-bytes-freed 10523961, :suite "Map operations"}
-{:label "get on 1000-key map", :iterations 10000, :total-ns 34887000, :mean-ns 3488, :gc-collections 4, :gc-bytes-freed 13948083, :suite "Map operations"}
-{:label "dissoc from 100-key map", :iterations 1000, :total-ns 128442000, :mean-ns 128442, :gc-collections 17, :gc-bytes-freed 59271434, :suite "Map operations"}
-{:label "intern 100 new symbols", :iterations 1000, :total-ns 331110000, :mean-ns 331110, :gc-collections 58, :gc-bytes-freed 136134269, :suite "Symbol/keyword interning"}
-{:label "intern 100 new keywords", :iterations 1000, :total-ns 358245000, :mean-ns 358245, :gc-collections 52, :gc-bytes-freed 138305834, :suite "Symbol/keyword interning"}
-{:label "lookup existing symbol", :iterations 100000, :total-ns 303244000, :mean-ns 3032, :gc-collections 42, :gc-bytes-freed 118307268, :suite "Symbol/keyword interning"}
-{:label "lookup existing keyword", :iterations 100000, :total-ns 296870000, :mean-ns 2968, :gc-collections 41, :gc-bytes-freed 115483885, :suite "Symbol/keyword interning"}
-{:label "empty fn call", :iterations 100000, :total-ns 262278000, :mean-ns 2622, :gc-collections 52, :gc-bytes-freed 114824098, :suite "Eval and function call overhead"}
-{:label "identity fn call", :iterations 100000, :total-ns 313356000, :mean-ns 3133, :gc-collections 66, :gc-bytes-freed 146610031, :suite "Eval and function call overhead"}
-{:label "3-arg fn call", :iterations 100000, :total-ns 421913000, :mean-ns 4219, :gc-collections 84, :gc-bytes-freed 186745130, :suite "Eval and function call overhead"}
-{:label "let binding (5 bindings)", :iterations 10000, :total-ns 47933000, :mean-ns 4793, :gc-collections 9, :gc-bytes-freed 20009058, :suite "Eval and function call overhead"}
-{:label "fibonacci(20) recursive", :iterations 100, :total-ns 4214825000, :mean-ns 42148250, :gc-collections 757, :gc-bytes-freed 1719422808, :suite "Eval and function call overhead"}
-{:label "map + filter + reduce pipeline", :iterations 1000, :total-ns 1643344000, :mean-ns 1643344, :gc-collections 270, :gc-bytes-freed 627552522, :suite "Eval and function call overhead"}
-{:label "local var (let binding)", :iterations 100000, :total-ns 299645000, :mean-ns 2996, :gc-collections 60, :gc-bytes-freed 139504572, :suite "Environment lookup"}
-{:label "deeply nested let (10 deep)", :iterations 10000, :total-ns 100597000, :mean-ns 10059, :gc-collections 21, :gc-bytes-freed 49345501, :suite "Environment lookup"}
-{:label "global var lookup", :iterations 100000, :total-ns 243912000, :mean-ns 2439, :gc-collections 47, :gc-bytes-freed 110484056, :suite "Environment lookup"}
-{:label "closure capture (1 var)", :iterations 100000, :total-ns 246948000, :mean-ns 2469, :gc-collections 47, :gc-bytes-freed 110479031, :suite "Environment lookup"}
-{:label "closure capture (5 vars)", :iterations 100000, :total-ns 331748000, :mean-ns 3317, :gc-collections 64, :gc-bytes-freed 150440779, :suite "Environment lookup"}
-{:label "cons cell creation", :iterations 100000, :total-ns 282473000, :mean-ns 2824, :gc-collections 55, :gc-bytes-freed 129406317, :suite "Allocation pressure"}
-{:label "small vector [1 2 3]", :iterations 100000, :total-ns 304263000, :mean-ns 3042, :gc-collections 62, :gc-bytes-freed 145890707, :suite "Allocation pressure"}
-{:label "small map {:a 1}", :iterations 100000, :total-ns 368780000, :mean-ns 3687, :gc-collections 69, :gc-bytes-freed 162363019, :suite "Allocation pressure"}
-{:label "integer boxing", :iterations 1000000, :total-ns 2480833000, :mean-ns 2480, :gc-collections 471, :gc-bytes-freed 1108317447, :suite "Allocation pressure"}
-{:label "string creation", :iterations 100000, :total-ns 317024000, :mean-ns 3170, :gc-collections 59, :gc-bytes-freed 138828561, :suite "Allocation pressure"}
-{:label "keyword creation (existing)", :iterations 1000000, :total-ns 2492897000, :mean-ns 2492, :gc-collections 471, :gc-bytes-freed 1108318509, :suite "Allocation pressure"}
-{:label "(range 100) -- lazy creation", :iterations 10000, :total-ns 140381000, :mean-ns 14038, :gc-collections 26, :gc-bytes-freed 61508725, :suite "Lazy vs eager sequences"}
-{:label "(doall (range 100)) -- force lazy", :iterations 1000, :total-ns 435449000, :mean-ns 435449, :gc-collections 73, :gc-bytes-freed 178777694, :suite "Lazy vs eager sequences"}
-{:label "(rangev 100) -- eager vector", :iterations 10000, :total-ns 167348000, :mean-ns 16734, :gc-collections 36, :gc-bytes-freed 89010632, :suite "Lazy vs eager sequences"}
-{:label "(into [] (range 100)) -- lazy->vec", :iterations 1000, :total-ns 383361000, :mean-ns 383361, :gc-collections 66, :gc-bytes-freed 163151989, :suite "Lazy vs eager sequences"}
-{:label "(mapv inc (rangev 100))", :iterations 1000, :total-ns 511977000, :mean-ns 511977, :gc-collections 91, :gc-bytes-freed 224932466, :suite "Lazy vs eager sequences"}
-{:label "(map inc (range 100)) -- lazy", :iterations 1000, :total-ns 937142000, :mean-ns 937142, :gc-collections 144, :gc-bytes-freed 357689885, :suite "Lazy vs eager sequences"}
-{:label "(filterv odd? (rangev 100))", :iterations 1000, :total-ns 839732000, :mean-ns 839732, :gc-collections 139, :gc-bytes-freed 345872365, :suite "Lazy vs eager sequences"}
-{:label "(filter odd? (range 100)) -- lazy", :iterations 1000, :total-ns 1216610000, :mean-ns 1216610, :gc-collections 188, :gc-bytes-freed 467723400, :suite "Lazy vs eager sequences"}
-{:label "primitive fn: (+ 1 2)", :iterations 100000, :total-ns 325187000, :mean-ns 3251, :gc-collections 52, :gc-bytes-freed 129395688, :suite "Function dispatch"}
-{:label "user fn (0 args)", :iterations 100000, :total-ns 283337000, :mean-ns 2833, :gc-collections 46, :gc-bytes-freed 114446043, :suite "Function dispatch"}
-{:label "user fn (1 arg)", :iterations 100000, :total-ns 352550000, :mean-ns 3525, :gc-collections 60, :gc-bytes-freed 149277639, :suite "Function dispatch"}
-{:label "user fn (3 args)", :iterations 100000, :total-ns 475708000, :mean-ns 4757, :gc-collections 75, :gc-bytes-freed 186598277, :suite "Function dispatch"}
-{:label "user fn (5 args)", :iterations 100000, :total-ns 564669000, :mean-ns 5646, :gc-collections 85, :gc-bytes-freed 211470331, :suite "Function dispatch"}
-{:label "apply with 3 args", :iterations 10000, :total-ns 61681000, :mean-ns 6168, :gc-collections 10, :gc-bytes-freed 24879847, :suite "Function dispatch"}
-{:label "higher-order: (map inc [1 2 3])", :iterations 10000, :total-ns 277707000, :mean-ns 27770, :gc-collections 45, :gc-bytes-freed 111952581, :suite "Function dispatch"}
-{:label "loop 100 iters", :iterations 10000, :total-ns 2018730000, :mean-ns 201873, :gc-collections 305, :gc-bytes-freed 773509798, :suite "Loop/recur"}
-{:label "loop 1000 iters", :iterations 1000, :total-ns 1969050000, :mean-ns 1969050, :gc-collections 298, :gc-bytes-freed 755899355, :suite "Loop/recur"}
-{:label "loop 10000 iters", :iterations 100, :total-ns 1963803000, :mean-ns 19638030, :gc-collections 297, :gc-bytes-freed 753362456, :suite "Loop/recur"}
-{:label "dotimes 100", :iterations 10000, :total-ns 3198402000, :mean-ns 319840, :gc-collections 293, :gc-bytes-freed 1106285911, :suite "Loop/recur"}
-{:label "dotimes 1000", :iterations 1000, :total-ns 3291568000, :mean-ns 3291568, :gc-collections 191, :gc-bytes-freed 1064747509, :suite "Loop/recur"}
-{:label "reduce + over 100 ints", :iterations 10000, :total-ns 574660000, :mean-ns 57466, :gc-collections 36, :gc-bytes-freed 206114861, :suite "Loop/recur"}
-{:label "reduce + over 1000 ints", :iterations 1000, :total-ns 530355000, :mean-ns 530355, :gc-collections 34, :gc-bytes-freed 194658156, :suite "Loop/recur"}
-{:label "str concat (3 short)", :iterations 100000, :total-ns 447122000, :mean-ns 4471, :gc-collections 24, :gc-bytes-freed 137409940, :suite "String operations"}
-{:label "str concat (10 short)", :iterations 10000, :total-ns 55555000, :mean-ns 5555, :gc-collections 3, :gc-bytes-freed 17174701, :suite "String operations"}
-{:label "format with 1 arg", :iterations 10000, :total-ns 38111000, :mean-ns 3811, :gc-collections 2, :gc-bytes-freed 11450570, :suite "String operations"}
-{:label "subs (middle of 100-char)", :iterations 100000, :total-ns 467996000, :mean-ns 4679, :gc-collections 25, :gc-bytes-freed 143132541, :suite "String operations"}
-{:label "split on space", :iterations 10000, :total-ns 72189000, :mean-ns 7218, :gc-collections 4, :gc-bytes-freed 22900559, :suite "String operations"}
-{:label "join with comma", :iterations 10000, :total-ns 45306000, :mean-ns 4530, :gc-collections 2, :gc-bytes-freed 11451286, :suite "String operations"}
-{:label "read-string simple", :iterations 10000, :total-ns 52000000, :mean-ns 5200, :gc-collections 3, :gc-bytes-freed 17255378, :suite "Reader overhead"}
-{:label "read-string symbol", :iterations 10000, :total-ns 38033000, :mean-ns 3803, :gc-collections 2, :gc-bytes-freed 11453791, :suite "Reader overhead"}
-{:label "read-string list", :iterations 10000, :total-ns 53983000, :mean-ns 5398, :gc-collections 3, :gc-bytes-freed 17176706, :suite "Reader overhead"}
-{:label "read-string vector", :iterations 10000, :total-ns 56004000, :mean-ns 5600, :gc-collections 3, :gc-bytes-freed 17174392, :suite "Reader overhead"}
-{:label "read-string map", :iterations 10000, :total-ns 88886000, :mean-ns 8888, :gc-collections 5, :gc-bytes-freed 28629494, :suite "Reader overhead"}
-{:label "read-string nested", :iterations 1000, :total-ns 1147000, :mean-ns 1147, :gc-collections 0, :gc-bytes-freed 0, :suite "Reader overhead"}
+{:label "build 1000-element list", :iterations 1000, :total-ns 2309866000, :mean-ns 2309866, :gc-collections 149, :gc-bytes-freed 816656500, :suite "Cons list operations"}
+{:label "build 10000-element list", :iterations 100, :total-ns 3388898000, :mean-ns 33888980, :gc-collections 88, :gc-bytes-freed 816082597, :suite "Cons list operations"}
+{:label "walk 1000-element list", :iterations 1000, :total-ns 3537516000, :mean-ns 3537516, :gc-collections 94, :gc-bytes-freed 930939329, :suite "Cons list operations"}
+{:label "walk 10000-element list", :iterations 100, :total-ns 3585341000, :mean-ns 35853410, :gc-collections 95, :gc-bytes-freed 940375796, :suite "Cons list operations"}
+{:label "conj 1000 elements", :iterations 1000, :total-ns 2733195000, :mean-ns 2733195, :gc-collections 209, :gc-bytes-freed 1088877521, :suite "Vector operations"}
+{:label "conj 10000 elements", :iterations 100, :total-ns 3105093000, :mean-ns 31050930, :gc-collections 171, :gc-bytes-freed 1096997649, :suite "Vector operations"}
+{:label "nth random on 1000-vec", :iterations 10000, :total-ns 22316000, :mean-ns 2231, :gc-collections 1, :gc-bytes-freed 6455497, :suite "Vector operations"}
+{:label "nth random on 10000-vec", :iterations 10000, :total-ns 43842000, :mean-ns 4384, :gc-collections 2, :gc-bytes-freed 13425543, :suite "Vector operations"}
+{:label "assoc on 1000-vec", :iterations 1000, :total-ns 734000, :mean-ns 734, :gc-collections 0, :gc-bytes-freed 0, :suite "Vector operations"}
+{:label "pop 1000-vec to empty", :iterations 100, :total-ns 230505000, :mean-ns 2305050, :gc-collections 13, :gc-bytes-freed 87998171, :suite "Vector operations"}
+{:label "assoc 100 keys", :iterations 1000, :total-ns 456334000, :mean-ns 456334, :gc-collections 63, :gc-bytes-freed 172772606, :suite "Map operations"}
+{:label "assoc 1000 keys", :iterations 100, :total-ns 536171000, :mean-ns 5361710, :gc-collections 63, :gc-bytes-freed 189676736, :suite "Map operations"}
+{:label "get on 100-key map", :iterations 10000, :total-ns 29919000, :mean-ns 2991, :gc-collections 3, :gc-bytes-freed 9260251, :suite "Map operations"}
+{:label "get on 1000-key map", :iterations 10000, :total-ns 30634000, :mean-ns 3063, :gc-collections 3, :gc-bytes-freed 9286367, :suite "Map operations"}
+{:label "dissoc from 100-key map", :iterations 1000, :total-ns 141893000, :mean-ns 141893, :gc-collections 19, :gc-bytes-freed 58809176, :suite "Map operations"}
+{:label "intern 100 new symbols", :iterations 1000, :total-ns 273145000, :mean-ns 273145, :gc-collections 41, :gc-bytes-freed 96440746, :suite "Symbol/keyword interning"}
+{:label "intern 100 new keywords", :iterations 1000, :total-ns 293035000, :mean-ns 293035, :gc-collections 37, :gc-bytes-freed 97850403, :suite "Symbol/keyword interning"}
+{:label "lookup existing symbol", :iterations 100000, :total-ns 241487000, :mean-ns 2414, :gc-collections 28, :gc-bytes-freed 78407695, :suite "Symbol/keyword interning"}
+{:label "lookup existing keyword", :iterations 100000, :total-ns 236599000, :mean-ns 2365, :gc-collections 28, :gc-bytes-freed 78413631, :suite "Symbol/keyword interning"}
+{:label "empty fn call", :iterations 100000, :total-ns 208869000, :mean-ns 2088, :gc-collections 34, :gc-bytes-freed 75328682, :suite "Eval and function call overhead"}
+{:label "identity fn call", :iterations 100000, :total-ns 249063000, :mean-ns 2490, :gc-collections 41, :gc-bytes-freed 91508368, :suite "Eval and function call overhead"}
+{:label "3-arg fn call", :iterations 100000, :total-ns 345290000, :mean-ns 3452, :gc-collections 58, :gc-bytes-freed 129437782, :suite "Eval and function call overhead"}
+{:label "let binding (5 bindings)", :iterations 10000, :total-ns 37880000, :mean-ns 3788, :gc-collections 6, :gc-bytes-freed 13392091, :suite "Eval and function call overhead"}
+{:label "fibonacci(20) recursive", :iterations 100, :total-ns 3654840000, :mean-ns 36548400, :gc-collections 578, :gc-bytes-freed 1298657758, :suite "Eval and function call overhead"}
+{:label "map + filter + reduce pipeline", :iterations 1000, :total-ns 1435755000, :mean-ns 1435755, :gc-collections 187, :gc-bytes-freed 434567536, :suite "Eval and function call overhead"}
+{:label "local var (let binding)", :iterations 100000, :total-ns 226210000, :mean-ns 2262, :gc-collections 36, :gc-bytes-freed 83075862, :suite "Environment lookup"}
+{:label "deeply nested let (10 deep)", :iterations 10000, :total-ns 70490000, :mean-ns 7049, :gc-collections 11, :gc-bytes-freed 25709109, :suite "Environment lookup"}
+{:label "global var lookup", :iterations 100000, :total-ns 195520000, :mean-ns 1955, :gc-collections 31, :gc-bytes-freed 72528207, :suite "Environment lookup"}
+{:label "closure capture (1 var)", :iterations 100000, :total-ns 195856000, :mean-ns 1958, :gc-collections 31, :gc-bytes-freed 72525573, :suite "Environment lookup"}
+{:label "closure capture (5 vars)", :iterations 100000, :total-ns 276947000, :mean-ns 2769, :gc-collections 47, :gc-bytes-freed 109960518, :suite "Environment lookup"}
+{:label "cons cell creation", :iterations 100000, :total-ns 235051000, :mean-ns 2350, :gc-collections 39, :gc-bytes-freed 91427951, :suite "Allocation pressure"}
+{:label "small vector [1 2 3]", :iterations 100000, :total-ns 260836000, :mean-ns 2608, :gc-collections 46, :gc-bytes-freed 107861029, :suite "Allocation pressure"}
+{:label "small map {:a 1}", :iterations 100000, :total-ns 322648000, :mean-ns 3226, :gc-collections 53, :gc-bytes-freed 124279939, :suite "Allocation pressure"}
+{:label "integer boxing", :iterations 1000000, :total-ns 1973959000, :mean-ns 1973, :gc-collections 309, :gc-bytes-freed 724523005, :suite "Allocation pressure"}
+{:label "string creation", :iterations 100000, :total-ns 264539000, :mean-ns 2645, :gc-collections 42, :gc-bytes-freed 98480402, :suite "Allocation pressure"}
+{:label "keyword creation (existing)", :iterations 1000000, :total-ns 2007566000, :mean-ns 2007, :gc-collections 309, :gc-bytes-freed 724520367, :suite "Allocation pressure"}
+{:label "(range 100) -- lazy creation", :iterations 10000, :total-ns 125967000, :mean-ns 12596, :gc-collections 21, :gc-bytes-freed 49340112, :suite "Lazy vs eager sequences"}
+{:label "(doall (range 100)) -- force lazy", :iterations 1000, :total-ns 385579000, :mean-ns 385579, :gc-collections 56, :gc-bytes-freed 139221094, :suite "Lazy vs eager sequences"}
+{:label "(rangev 100) -- eager vector", :iterations 10000, :total-ns 167172000, :mean-ns 16717, :gc-collections 34, :gc-bytes-freed 85027845, :suite "Lazy vs eager sequences"}
+{:label "(into [] (range 100)) -- lazy->vec", :iterations 1000, :total-ns 357748000, :mean-ns 357748, :gc-collections 56, :gc-bytes-freed 140016986, :suite "Lazy vs eager sequences"}
+{:label "(mapv inc (rangev 100))", :iterations 1000, :total-ns 447030000, :mean-ns 447030, :gc-collections 67, :gc-bytes-freed 167518075, :suite "Lazy vs eager sequences"}
+{:label "(map inc (range 100)) -- lazy", :iterations 1000, :total-ns 807203000, :mean-ns 807203, :gc-collections 103, :gc-bytes-freed 257915352, :suite "Lazy vs eager sequences"}
+{:label "(filterv odd? (rangev 100))", :iterations 1000, :total-ns 715965000, :mean-ns 715965, :gc-collections 92, :gc-bytes-freed 230423387, :suite "Lazy vs eager sequences"}
+{:label "(filter odd? (range 100)) -- lazy", :iterations 1000, :total-ns 1063519000, :mean-ns 1063519, :gc-collections 128, :gc-bytes-freed 320593042, :suite "Lazy vs eager sequences"}
+{:label "primitive fn: (+ 1 2)", :iterations 100000, :total-ns 286463000, :mean-ns 2864, :gc-collections 37, :gc-bytes-freed 92687929, :suite "Function dispatch"}
+{:label "user fn (0 args)", :iterations 100000, :total-ns 247569000, :mean-ns 2475, :gc-collections 31, :gc-bytes-freed 77646099, :suite "Function dispatch"}
+{:label "user fn (1 arg)", :iterations 100000, :total-ns 290100000, :mean-ns 2901, :gc-collections 36, :gc-bytes-freed 90169854, :suite "Function dispatch"}
+{:label "user fn (3 args)", :iterations 100000, :total-ns 411504000, :mean-ns 4115, :gc-collections 51, :gc-bytes-freed 127734494, :suite "Function dispatch"}
+{:label "user fn (5 args)", :iterations 100000, :total-ns 526634000, :mean-ns 5266, :gc-collections 67, :gc-bytes-freed 167813454, :suite "Function dispatch"}
+{:label "apply with 3 args", :iterations 10000, :total-ns 52388000, :mean-ns 5238, :gc-collections 7, :gc-bytes-freed 17530634, :suite "Function dispatch"}
+{:label "higher-order: (map inc [1 2 3])", :iterations 10000, :total-ns 238950000, :mean-ns 23895, :gc-collections 30, :gc-bytes-freed 75135169, :suite "Function dispatch"}
+{:label "loop 100 iters", :iterations 10000, :total-ns 1799355000, :mean-ns 179935, :gc-collections 228, :gc-bytes-freed 575326218, :suite "Loop/recur"}
+{:label "loop 1000 iters", :iterations 1000, :total-ns 1764579000, :mean-ns 1764579, :gc-collections 223, :gc-bytes-freed 562814210, :suite "Loop/recur"}
+{:label "loop 10000 iters", :iterations 100, :total-ns 1767550000, :mean-ns 17675500, :gc-collections 223, :gc-bytes-freed 562816784, :suite "Loop/recur"}
+{:label "dotimes 100", :iterations 10000, :total-ns 2571931000, :mean-ns 257193, :gc-collections 190, :gc-bytes-freed 714462831, :suite "Loop/recur"}
+{:label "dotimes 1000", :iterations 1000, :total-ns 2604462000, :mean-ns 2604462, :gc-collections 122, :gc-bytes-freed 678481867, :suite "Loop/recur"}
+{:label "reduce + over 100 ints", :iterations 10000, :total-ns 599979000, :mean-ns 59997, :gc-collections 35, :gc-bytes-freed 199811251, :suite "Loop/recur"}
+{:label "reduce + over 1000 ints", :iterations 1000, :total-ns 572905000, :mean-ns 572905, :gc-collections 34, :gc-bytes-freed 194095036, :suite "Loop/recur"}
+{:label "str concat (3 short)", :iterations 100000, :total-ns 374452000, :mean-ns 3744, :gc-collections 17, :gc-bytes-freed 97049657, :suite "String operations"}
+{:label "str concat (10 short)", :iterations 10000, :total-ns 60939000, :mean-ns 6093, :gc-collections 3, :gc-bytes-freed 17127100, :suite "String operations"}
+{:label "format with 1 arg", :iterations 10000, :total-ns 26375000, :mean-ns 2637, :gc-collections 1, :gc-bytes-freed 5708474, :suite "String operations"}
+{:label "subs (middle of 100-char)", :iterations 100000, :total-ns 391460000, :mean-ns 3914, :gc-collections 18, :gc-bytes-freed 102758654, :suite "String operations"}
+{:label "split on space", :iterations 10000, :total-ns 63029000, :mean-ns 6302, :gc-collections 3, :gc-bytes-freed 17123871, :suite "String operations"}
+{:label "join with comma", :iterations 10000, :total-ns 51622000, :mean-ns 5162, :gc-collections 2, :gc-bytes-freed 11418042, :suite "String operations"}
+{:label "read-string simple", :iterations 10000, :total-ns 42782000, :mean-ns 4278, :gc-collections 2, :gc-bytes-freed 11500075, :suite "Reader overhead"}
+{:label "read-string symbol", :iterations 10000, :total-ns 23074000, :mean-ns 2307, :gc-collections 1, :gc-bytes-freed 5703980, :suite "Reader overhead"}
+{:label "read-string list", :iterations 10000, :total-ns 43751000, :mean-ns 4375, :gc-collections 2, :gc-bytes-freed 11420525, :suite "Reader overhead"}
+{:label "read-string vector", :iterations 10000, :total-ns 58379000, :mean-ns 5837, :gc-collections 3, :gc-bytes-freed 17124603, :suite "Reader overhead"}
+{:label "read-string map", :iterations 10000, :total-ns 78590000, :mean-ns 7859, :gc-collections 4, :gc-bytes-freed 22838254, :suite "Reader overhead"}
+{:label "read-string nested", :iterations 1000, :total-ns 17160000, :mean-ns 17160, :gc-collections 1, :gc-bytes-freed 5706320, :suite "Reader overhead"}
