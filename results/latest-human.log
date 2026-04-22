@@ -1,0 +1,102 @@
+--- build ---
+  nothing to compile
+--- build (0.392ms) ---
+--- bench ---
+=== mino-bench: mino-level benchmarks (isolated) ===
+
+== Cons list operations ==
+  build 1000-element list: 1.79s total, 1.79ms/op (1000 iters, 107 GCs, 553915KB freed, 1.48s gc 82.7%, 26.34ms max)
+  build 10000-element list: 2.89s total, 28.91ms/op (100 iters, 74 GCs, 563356KB freed, 2.44s gc 84.2%, 45.24ms max)
+  walk 1000-element list: 1.88s total, 1.88ms/op (1000 iters, 43 GCs, 364181KB freed, 1.50s gc 79.8%, 45.24ms max)
+  walk 10000-element list: 1.91s total, 19.08ms/op (100 iters, 44 GCs, 371419KB freed, 1.52s gc 79.6%, 45.24ms max)
+== Vector operations ==
+  conj 1000 elements: 1.98s total, 1.98ms/op (1000 iters, 150 GCs, 823901KB freed, 1.63s gc 82.3%, 19.04ms max)
+  conj 10000 elements: 2.88s total, 28.77ms/op (100 iters, 143 GCs, 833365KB freed, 2.47s gc 85.9%, 27.69ms max)
+  nth random on 1000-vec: 4.63ms total, 462ns/op (10000 iters, 0 GCs, 0KB freed, 0ns gc 0.0%, 27.69ms max)
+  nth random on 10000-vec: 29.06ms total, 2.90us/op (10000 iters, 1 GCs, 6553KB freed, 25.02ms gc 86.1%, 27.69ms max)
+  assoc on 1000-vec: 585.00us total, 585ns/op (1000 iters, 0 GCs, 0KB freed, 0ns gc 0.0%, 27.69ms max)
+  pop 1000-vec to empty: 154.72ms total, 1.55ms/op (100 iters, 8 GCs, 54186KB freed, 129.23ms gc 83.5%, 27.69ms max)
+== Map operations ==
+  assoc 100 keys: 372.38ms total, 372.38us/op (1000 iters, 49 GCs, 141324KB freed, 309.27ms gc 83.0%, 7.01ms max)
+  assoc 1000 keys: 459.14ms total, 4.59ms/op (100 iters, 56 GCs, 161585KB freed, 390.62ms gc 85.0%, 7.85ms max)
+  get on 100-key map: 11.26ms total, 1.13us/op (10000 iters, 1 GCs, 2864KB freed, 7.28ms gc 64.6%, 7.85ms max)
+  get on 1000-key map: 18.39ms total, 1.84us/op (10000 iters, 2 GCs, 5767KB freed, 14.53ms gc 78.9%, 7.85ms max)
+  dissoc from 100-key map: 144.97ms total, 144.97us/op (1000 iters, 20 GCs, 57670KB freed, 131.79ms gc 90.9%, 7.85ms max)
+== Symbol/keyword interning ==
+  intern 100 new symbols: 150.54ms total, 150.54us/op (1000 iters, 25 GCs, 54148KB freed, 103.11ms gc 68.4%, 4.70ms max)
+  intern 100 new keywords: 158.99ms total, 158.99us/op (1000 iters, 22 GCs, 54301KB freed, 109.95ms gc 69.1%, 5.46ms max)
+  lookup existing symbol: 120.86ms total, 1.21us/op (100000 iters, 16 GCs, 42022KB freed, 85.29ms gc 70.5%, 5.58ms max)
+  lookup existing keyword: 121.82ms total, 1.22us/op (100000 iters, 16 GCs, 42021KB freed, 86.47ms gc 70.9%, 5.80ms max)
+== Eval and function call overhead ==
+  empty fn call: 105.26ms total, 1.05us/op (100000 iters, 19 GCs, 38674KB freed, 71.05ms gc 67.4%, 3.88ms max)
+  identity fn call: 132.85ms total, 1.33us/op (100000 iters, 26 GCs, 53324KB freed, 96.27ms gc 72.4%, 3.91ms max)
+  3-arg fn call: 205.09ms total, 2.05us/op (100000 iters, 42 GCs, 86136KB freed, 152.24ms gc 74.2%, 3.91ms max)
+  let binding (5 bindings): 21.70ms total, 2.17us/op (10000 iters, 4 GCs, 8203KB freed, 15.87ms gc 73.1%, 4.20ms max)
+  fibonacci(20) recursive: 2.95s total, 29.47ms/op (100 iters, 511 GCs, 1060126KB freed, 2.32s gc 78.8%, 6.72ms max)
+  map + filter + reduce pipeline: 233.79ms total, 233.79us/op (1000 iters, 47 GCs, 98212KB freed, 218.46ms gc 93.4%, 6.72ms max)
+== Environment lookup ==
+  local var (let binding): 114.75ms total, 1.15us/op (100000 iters, 21 GCs, 45039KB freed, 80.75ms gc 70.3%, 4.15ms max)
+  deeply nested let (10 deep): 50.02ms total, 5.00us/op (10000 iters, 10 GCs, 21681KB freed, 39.84ms gc 79.6%, 4.20ms max)
+  global var lookup: 97.68ms total, 976ns/op (100000 iters, 17 GCs, 36843KB freed, 66.43ms gc 68.0%, 4.35ms max)
+  closure capture (1 var): 91.54ms total, 915ns/op (100000 iters, 16 GCs, 34674KB freed, 61.23ms gc 66.8%, 4.35ms max)
+  closure capture (5 vars): 161.47ms total, 1.61us/op (100000 iters, 31 GCs, 67181KB freed, 114.66ms gc 71.0%, 4.35ms max)
+== Allocation pressure ==
+  cons cell creation: 128.70ms total, 1.29us/op (100000 iters, 25 GCs, 54175KB freed, 92.19ms gc 71.6%, 4.35ms max)
+  small vector [1 2 3]: 96.27ms total, 962ns/op (100000 iters, 17 GCs, 36843KB freed, 65.91ms gc 68.4%, 4.35ms max)
+  small map {:a 1}: 95.11ms total, 951ns/op (100000 iters, 17 GCs, 36841KB freed, 65.09ms gc 68.4%, 4.35ms max)
+  integer boxing: 942.54ms total, 942ns/op (1000000 iters, 165 GCs, 357583KB freed, 643.79ms gc 68.3%, 4.47ms max)
+  string creation: 162.53ms total, 1.62us/op (100000 iters, 29 GCs, 62847KB freed, 120.83ms gc 74.3%, 4.47ms max)
+  keyword creation (existing): 953.86ms total, 953ns/op (1000000 iters, 166 GCs, 359751KB freed, 653.78ms gc 68.5%, 5.41ms max)
+== Lazy vs eager sequences ==
+  (range 100) -- lazy creation: 15.07ms total, 1.51us/op (10000 iters, 3 GCs, 6497KB freed, 11.19ms gc 74.2%, 5.41ms max)
+  (doall (range 100)) -- force lazy: 67.58ms total, 67.58us/op (1000 iters, 18 GCs, 39222KB freed, 63.14ms gc 93.4%, 5.41ms max)
+  (rangev 100) -- eager vector: 33.69ms total, 3.37us/op (10000 iters, 8 GCs, 17465KB freed, 26.08ms gc 77.4%, 5.41ms max)
+  (into [] (range 100)) -- lazy->vec: 121.09ms total, 121.09us/op (1000 iters, 32 GCs, 69965KB freed, 113.09ms gc 93.3%, 5.41ms max)
+  (mapv inc (rangev 100)): 20.37ms total, 20.37us/op (1000 iters, 5 GCs, 10937KB freed, 17.89ms gc 87.8%, 5.41ms max)
+  (map inc (range 100)) -- lazy: 133.26ms total, 133.26us/op (1000 iters, 32 GCs, 69982KB freed, 124.00ms gc 93.0%, 5.41ms max)
+  (filterv odd? (rangev 100)): 17.89ms total, 17.89us/op (1000 iters, 4 GCs, 8757KB freed, 15.39ms gc 86.0%, 5.41ms max)
+  (filter odd? (range 100)) -- lazy: 108.20ms total, 108.20us/op (1000 iters, 26 GCs, 56869KB freed, 100.43ms gc 92.8%, 5.41ms max)
+  (doall (take 100 (range 1000))): 134.86ms total, 134.86us/op (1000 iters, 32 GCs, 70489KB freed, 126.32ms gc 93.6%, 5.41ms max)
+  (drop 50 (range 100)): 74.96ms total, 74.96us/op (1000 iters, 17 GCs, 37595KB freed, 69.86ms gc 93.1%, 5.41ms max)
+== Function dispatch ==
+  primitive fn: (+ 1 2): 133.75ms total, 1.34us/op (100000 iters, 22 GCs, 48662KB freed, 98.08ms gc 73.3%, 5.41ms max)
+  user fn (0 args): 116.64ms total, 1.17us/op (100000 iters, 18 GCs, 39810KB freed, 82.88ms gc 71.0%, 5.41ms max)
+  user fn (1 arg): 147.07ms total, 1.47us/op (100000 iters, 24 GCs, 53077KB freed, 110.57ms gc 75.1%, 5.41ms max)
+  user fn (3 args): 230.94ms total, 2.31us/op (100000 iters, 39 GCs, 86252KB freed, 178.94ms gc 77.4%, 5.41ms max)
+  user fn (5 args): 314.87ms total, 3.15us/op (100000 iters, 55 GCs, 121638KB freed, 249.21ms gc 79.1%, 5.41ms max)
+  apply with 3 args: 24.00ms total, 2.40us/op (10000 iters, 4 GCs, 8846KB freed, 18.18ms gc 75.7%, 5.41ms max)
+  higher-order: (map inc [1 2 3]): 57.13ms total, 5.71us/op (10000 iters, 11 GCs, 24328KB freed, 47.56ms gc 83.2%, 5.41ms max)
+== Loop/recur ==
+  loop 100 iters: 684.62ms total, 68.46us/op (10000 iters, 113 GCs, 259535KB freed, 505.00ms gc 73.7%, 5.41ms max)
+  loop 1000 iters: 770.39ms total, 770.39us/op (1000 iters, 133 GCs, 305661KB freed, 592.05ms gc 76.8%, 5.41ms max)
+  loop 10000 iters: 790.65ms total, 7.91ms/op (100 iters, 135 GCs, 310252KB freed, 611.84ms gc 77.3%, 5.52ms max)
+  dotimes 100: 946.06ms total, 94.61us/op (10000 iters, 82 GCs, 284161KB freed, 698.39ms gc 73.8%, 14.52ms max)
+  dotimes 1000: 1.06s total, 1.06ms/op (1000 iters, 58 GCs, 305150KB freed, 829.78ms gc 78.0%, 16.19ms max)
+  reduce + over 100 ints: 538.61ms total, 53.86us/op (10000 iters, 34 GCs, 183907KB freed, 506.03ms gc 93.9%, 17.05ms max)
+  reduce + over 1000 ints: 537.10ms total, 537.10us/op (1000 iters, 35 GCs, 189325KB freed, 508.16ms gc 94.6%, 17.05ms max)
+== String operations ==
+  str concat (3 short): 227.35ms total, 2.27us/op (100000 iters, 11 GCs, 59853KB freed, 185.02ms gc 81.3%, 19.64ms max)
+  str concat (10 short): 37.14ms total, 3.71us/op (10000 iters, 2 GCs, 10892KB freed, 31.76ms gc 85.5%, 19.64ms max)
+  format with 1 arg: 21.26ms total, 2.13us/op (10000 iters, 1 GCs, 5446KB freed, 16.92ms gc 79.5%, 19.64ms max)
+  subs (middle of 100-char): 234.89ms total, 2.35us/op (100000 iters, 12 GCs, 65358KB freed, 193.60ms gc 82.4%, 19.64ms max)
+  split on space: 37.89ms total, 3.79us/op (10000 iters, 2 GCs, 10893KB freed, 32.14ms gc 84.8%, 19.64ms max)
+  join with comma: 25.82ms total, 2.58us/op (10000 iters, 1 GCs, 5448KB freed, 16.49ms gc 63.8%, 19.64ms max)
+== Reader overhead ==
+  read-string simple: 20.81ms total, 2.08us/op (10000 iters, 1 GCs, 5529KB freed, 16.67ms gc 80.1%, 19.64ms max)
+  read-string symbol: 20.05ms total, 2.00us/op (10000 iters, 1 GCs, 5447KB freed, 16.12ms gc 80.3%, 19.64ms max)
+  read-string list: 21.32ms total, 2.13us/op (10000 iters, 1 GCs, 5447KB freed, 16.26ms gc 76.2%, 19.64ms max)
+  read-string vector: 20.08ms total, 2.01us/op (10000 iters, 1 GCs, 5447KB freed, 14.87ms gc 74.0%, 19.64ms max)
+  read-string map: 71.48ms total, 7.15us/op (10000 iters, 4 GCs, 21791KB freed, 63.86ms gc 89.3%, 19.64ms max)
+  read-string nested: 969.00us total, 969ns/op (1000 iters, 0 GCs, 0KB freed, 0ns gc 0.0%, 19.64ms max)
+== Realistic multi-subsystem workloads ==
+  build 5k int-map and sum: 319.37ms total, 31.94ms/op (10 iters, 20 GCs, 94807KB freed, 283.90ms gc 88.8%, 22.80ms max)
+  bump 5k int-map values: 416.71ms total, 83.34ms/op (5 iters, 14 GCs, 99537KB freed, 374.56ms gc 89.8%, 35.73ms max)
+  map/filter/map/reduce over 50k: 4.74s total, 473.72ms/op (10 iters, 55 GCs, 730159KB freed, 4.17s gc 88.0%, 110.76ms max)
+  nested vectors 500x100: 2.91s total, 291.33ms/op (10 iters, 23 GCs, 348957KB freed, 2.59s gc 88.8%, 131.99ms max)
+  realize 10k of lazy range: 1.06s total, 53.09ms/op (20 iters, 10 GCs, 158292KB freed, 907.95ms gc 85.5%, 147.06ms max)
+  fibonacci(25): 7.54s total, 754.02ms/op (10 iters, 77 GCs, 1174008KB freed, 6.11s gc 80.9%, 147.06ms max)
+
+Report written to results/latest.edn (78 benchmarks)
+=== done ===
+
+--- bench (0.423ms) ---
