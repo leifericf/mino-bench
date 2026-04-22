@@ -1,0 +1,30 @@
+;; mino-bench async baseline
+;; date: 2026-04-22
+;; mino: async-nil-cb-fix tip (local-only, rebased atop v0.42.0)
+;; platform: darwin arm64 (Mach-O 64-bit, -O2)
+;; binary: ./mino/mino (submodule pinned to nil-cb fix commit)
+;;
+;; Each entry: {:label L :iterations N :total-ns T :mean-ns M :gc-collections G
+;;              :gc-minor Gn :gc-major Gm :gc-bytes-freed F :gc-ns GN
+;;              :gc-pct-tenths GP :max-gc-ns MG :suite S}
+;;
+{:label "offer!/poll! on (chan 1024)", :iterations 100000, :total-ns 266158000, :mean-ns 2661, :gc-collections 94, :gc-minor 93, :gc-major 1, :gc-bytes-freed 96831253, :gc-ns 31670000, :gc-pct-tenths 118, :max-gc-ns 1260000, :suite "async: buffered channel (offer!/poll!, no scheduler)"}
+{:label "offer!/poll! on (chan 1)", :iterations 100000, :total-ns 270855000, :mean-ns 2708, :gc-collections 93, :gc-minor 93, :gc-major 0, :gc-bytes-freed 97466939, :gc-ns 30584000, :gc-pct-tenths 112, :max-gc-ns 1260000, :suite "async: buffered channel (offer!/poll!, no scheduler)"}
+{:label "offer! full returns false", :iterations 100000, :total-ns 207255000, :mean-ns 2072, :gc-collections 70, :gc-minor 70, :gc-major 0, :gc-bytes-freed 73364502, :gc-ns 24114000, :gc-pct-tenths 116, :max-gc-ns 1260000, :suite "async: buffered channel (offer!/poll!, no scheduler)"}
+{:label "poll! empty returns nil", :iterations 100000, :total-ns 179718000, :mean-ns 1797, :gc-collections 58, :gc-minor 58, :gc-major 0, :gc-bytes-freed 60787319, :gc-ns 19739000, :gc-pct-tenths 109, :max-gc-ns 1260000, :suite "async: buffered channel (offer!/poll!, no scheduler)"}
+{:label "put!/take! on (chan 1) + drain!", :iterations 10000, :total-ns 44399000, :mean-ns 4439, :gc-collections 14, :gc-minor 14, :gc-major 0, :gc-bytes-freed 14656443, :gc-ns 5238000, :gc-pct-tenths 117, :max-gc-ns 1260000, :suite "async: buffered put!/take! + drain!"}
+{:label "put!/take! on (chan 1024) + drain!", :iterations 10000, :total-ns 46169000, :mean-ns 4616, :gc-collections 15, :gc-minor 15, :gc-major 0, :gc-bytes-freed 15711000, :gc-ns 5563000, :gc-pct-tenths 120, :max-gc-ns 1260000, :suite "async: buffered put!/take! + drain!"}
+{:label "put! with callback + drain!", :iterations 10000, :total-ns 43964000, :mean-ns 4396, :gc-collections 14, :gc-minor 14, :gc-major 0, :gc-bytes-freed 14662718, :gc-ns 5247000, :gc-pct-tenths 119, :max-gc-ns 1260000, :suite "async: buffered put!/take! + drain!"}
+{:label "go (<! ch) with pending put + drain!", :iterations 1000, :total-ns 927541000, :mean-ns 927541, :gc-collections 158, :gc-minor 156, :gc-major 2, :gc-bytes-freed 162152401, :gc-ns 221640000, :gc-pct-tenths 238, :max-gc-ns 5956000, :suite "async: go-block park/unpark"}
+{:label "go (>! ch v) paired with take! + drain!", :iterations 1000, :total-ns 1939593000, :mean-ns 1939593, :gc-collections 183, :gc-minor 181, :gc-major 2, :gc-bytes-freed 188849891, :gc-ns 599008000, :gc-pct-tenths 308, :max-gc-ns 11408000, :suite "async: go-block park/unpark"}
+{:label "go hand-shake: producer/consumer pair", :iterations 500, :total-ns 2691698000, :mean-ns 5383396, :gc-collections 169, :gc-minor 168, :gc-major 1, :gc-bytes-freed 174024181, :gc-ns 903995000, :gc-pct-tenths 335, :max-gc-ns 17019000, :suite "async: go-block park/unpark"}
+{:label "go with 3 sequential <!", :iterations 500, :total-ns 6630124000, :mean-ns 13260248, :gc-collections 302, :gc-minor 299, :gc-major 3, :gc-bytes-freed 311755100, :gc-ns 2212994000, :gc-pct-tenths 333, :max-gc-ns 24956000, :suite "async: go-block park/unpark"}
+{:label "alts! over 1 ready channel", :iterations 10000, :total-ns 650802000, :mean-ns 65080, :gc-collections 25, :gc-minor 25, :gc-major 0, :gc-bytes-freed 26147870, :gc-ns 216193000, :gc-pct-tenths 332, :max-gc-ns 24956000, :suite "async: alts! arbitration"}
+{:label "alts! over 8 channels, last ready", :iterations 5000, :total-ns 301199000, :mean-ns 60239, :gc-collections 11, :gc-minor 11, :gc-major 0, :gc-bytes-freed 11508167, :gc-ns 94595000, :gc-pct-tenths 314, :max-gc-ns 24956000, :suite "async: alts! arbitration"}
+{:label "alts! with :default (nothing ready)", :iterations 10000, :total-ns 546920000, :mean-ns 54692, :gc-collections 20, :gc-minor 20, :gc-major 0, :gc-bytes-freed 20942519, :gc-ns 191225000, :gc-pct-tenths 349, :max-gc-ns 24956000, :suite "async: alts! arbitration"}
+{:label "alts! put op ready (buffered)", :iterations 10000, :total-ns 731545000, :mean-ns 73154, :gc-collections 28, :gc-minor 28, :gc-major 0, :gc-bytes-freed 29303689, :gc-ns 248817000, :gc-pct-tenths 340, :max-gc-ns 24956000, :suite "async: alts! arbitration"}
+{:label "(timeout 0) + take! + drain-loop!", :iterations 1000, :total-ns 54901000, :mean-ns 54901, :gc-collections 2, :gc-minor 2, :gc-major 0, :gc-bytes-freed 2080621, :gc-ns 15567000, :gc-pct-tenths 283, :max-gc-ns 24956000, :suite "async: timer / timeout"}
+{:label "alts! over (timeout 0) + dead chan", :iterations 1000, :total-ns 59779000, :mean-ns 59779, :gc-collections 2, :gc-minor 2, :gc-major 0, :gc-bytes-freed 2084636, :gc-ns 17897000, :gc-pct-tenths 299, :max-gc-ns 24956000, :suite "async: timer / timeout"}
+{:label "create 10 overlapping timeouts", :iterations 100, :total-ns 27986000, :mean-ns 279860, :gc-collections 1, :gc-minor 1, :gc-major 0, :gc-bytes-freed 1031750, :gc-ns 8304000, :gc-pct-tenths 296, :max-gc-ns 24956000, :suite "async: timer / timeout"}
+{:label "producer->xform->consumer, 100 vals", :iterations 50, :total-ns 11588250000, :mean-ns 231765000, :gc-collections 402, :gc-minor 400, :gc-major 2, :gc-bytes-freed 419898097, :gc-ns 3888925000, :gc-pct-tenths 335, :max-gc-ns 33654000, :suite "async: realistic pipeline"}
+{:label "fan-in 4->1 via alts! over 40 vals", :iterations 50, :total-ns 8361290000, :mean-ns 167225800, :gc-collections 225, :gc-minor 224, :gc-major 1, :gc-bytes-freed 230465562, :gc-ns 2785906000, :gc-pct-tenths 333, :max-gc-ns 37570000, :suite "async: realistic pipeline"}
