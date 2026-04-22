@@ -1,0 +1,190 @@
+===== cons_bench =====
+== Cons list operations ==
+  build 1000-element list: 4.42s total, 4.42ms/op (1000 iters, 542+22 GCs, 553945KB freed, 806.54ms gc 18.2%, 9.98ms max)
+;edn; {:label "build 1000-element list", :iterations 1000, :total-ns 4421273000, :mean-ns 4421273, :gc-collections 564, :gc-minor 542, :gc-major 22, :gc-bytes-freed 567240653, :gc-ns 806545000, :gc-pct-tenths 182, :max-gc-ns 9982000, :suite "Cons list operations"}
+  build 10000-element list: 5.84s total, 58.36ms/op (100 iters, 549+27 GCs, 560818KB freed, 1.27s gc 21.7%, 20.14ms max)
+;edn; {:label "build 10000-element list", :iterations 100, :total-ns 5835876000, :mean-ns 58358760, :gc-collections 576, :gc-minor 549, :gc-major 27, :gc-bytes-freed 574278625, :gc-ns 1270418000, :gc-pct-tenths 217, :max-gc-ns 20143000, :suite "Cons list operations"}
+  walk 1000-element list: 3.56s total, 3.56ms/op (1000 iters, 359+0 GCs, 367139KB freed, 598.13ms gc 16.7%, 20.14ms max)
+;edn; {:label "walk 1000-element list", :iterations 1000, :total-ns 3562293000, :mean-ns 3562293, :gc-collections 359, :gc-minor 359, :gc-major 0, :gc-bytes-freed 375951345, :gc-ns 598131000, :gc-pct-tenths 167, :max-gc-ns 20143000, :suite "Cons list operations"}
+  walk 10000-element list: 3.90s total, 39.02ms/op (100 iters, 366+0 GCs, 374600KB freed, 679.48ms gc 17.4%, 20.14ms max)
+;edn; {:label "walk 10000-element list", :iterations 100, :total-ns 3901957000, :mean-ns 39019570, :gc-collections 366, :gc-minor 366, :gc-major 0, :gc-bytes-freed 383590808, :gc-ns 679475000, :gc-pct-tenths 174, :max-gc-ns 20143000, :suite "Cons list operations"}
+
+
+===== eval_bench =====
+== Eval and function call overhead ==
+  empty fn call: 98.80ms total, 988ns/op (100000 iters, 39+1 GCs, 39825KB freed, 8.96ms gc 9.0%, 789.00us max)
+;edn; {:label "empty fn call", :iterations 100000, :total-ns 98801000, :mean-ns 988, :gc-collections 40, :gc-minor 39, :gc-major 1, :gc-bytes-freed 40781207, :gc-ns 8960000, :gc-pct-tenths 90, :max-gc-ns 789000, :suite "Eval and function call overhead"}
+  identity fn call: 122.42ms total, 1.22us/op (100000 iters, 52+0 GCs, 53224KB freed, 10.65ms gc 8.7%, 789.00us max)
+;edn; {:label "identity fn call", :iterations 100000, :total-ns 122420000, :mean-ns 1224, :gc-collections 52, :gc-minor 52, :gc-major 0, :gc-bytes-freed 54502212, :gc-ns 10654000, :gc-pct-tenths 87, :max-gc-ns 789000, :suite "Eval and function call overhead"}
+  3-arg fn call: 188.97ms total, 1.89us/op (100000 iters, 83+0 GCs, 84944KB freed, 17.66ms gc 9.3%, 789.00us max)
+;edn; {:label "3-arg fn call", :iterations 100000, :total-ns 188972000, :mean-ns 1889, :gc-collections 83, :gc-minor 83, :gc-major 0, :gc-bytes-freed 86983170, :gc-ns 17662000, :gc-pct-tenths 93, :max-gc-ns 789000, :suite "Eval and function call overhead"}
+  let binding (5 bindings): 21.11ms total, 2.11us/op (10000 iters, 9+0 GCs, 9199KB freed, 2.03ms gc 9.6%, 789.00us max)
+;edn; {:label "let binding (5 bindings)", :iterations 10000, :total-ns 21111000, :mean-ns 2111, :gc-collections 9, :gc-minor 9, :gc-major 0, :gc-bytes-freed 9420748, :gc-ns 2032000, :gc-pct-tenths 96, :max-gc-ns 789000, :suite "Eval and function call overhead"}
+  fibonacci(20) recursive: 3.58s total, 35.79ms/op (100 iters, 1036+5 GCs, 1060051KB freed, 450.59ms gc 12.5%, 2.66ms max)
+;edn; {:label "fibonacci(20) recursive", :iterations 100, :total-ns 3579315000, :mean-ns 35793150, :gc-collections 1041, :gc-minor 1036, :gc-major 5, :gc-bytes-freed 1085492832, :gc-ns 450589000, :gc-pct-tenths 125, :max-gc-ns 2657000, :suite "Eval and function call overhead"}
+  map + filter + reduce pipeline: 309.80ms total, 309.80us/op (1000 iters, 95+2 GCs, 97671KB freed, 41.62ms gc 13.4%, 2.66ms max)
+;edn; {:label "map + filter + reduce pipeline", :iterations 1000, :total-ns 309796000, :mean-ns 309796, :gc-collections 97, :gc-minor 95, :gc-major 2, :gc-bytes-freed 100015635, :gc-ns 41615000, :gc-pct-tenths 134, :max-gc-ns 2657000, :suite "Eval and function call overhead"}
+
+
+===== intern_bench =====
+== Symbol/keyword interning ==
+  intern 100 new symbols: 155.06ms total, 155.06us/op (1000 iters, 53+1 GCs, 53911KB freed, 19.09ms gc 12.3%, 811.00us max)
+;edn; {:label "intern 100 new symbols", :iterations 1000, :total-ns 155056000, :mean-ns 155056, :gc-collections 54, :gc-minor 53, :gc-major 1, :gc-bytes-freed 55205177, :gc-ns 19085000, :gc-pct-tenths 123, :max-gc-ns 811000, :suite "Symbol/keyword interning"}
+  intern 100 new keywords: 189.86ms total, 189.86us/op (1000 iters, 53+0 GCs, 53993KB freed, 27.85ms gc 14.6%, 811.00us max)
+;edn; {:label "intern 100 new keywords", :iterations 1000, :total-ns 189864000, :mean-ns 189864, :gc-collections 53, :gc-minor 53, :gc-major 0, :gc-bytes-freed 55289795, :gc-ns 27853000, :gc-pct-tenths 146, :max-gc-ns 811000, :suite "Symbol/keyword interning"}
+  lookup existing symbol: 158.18ms total, 1.58us/op (100000 iters, 42+0 GCs, 42987KB freed, 25.02ms gc 15.8%, 811.00us max)
+;edn; {:label "lookup existing symbol", :iterations 100000, :total-ns 158180000, :mean-ns 1581, :gc-collections 42, :gc-minor 42, :gc-major 0, :gc-bytes-freed 44019094, :gc-ns 25024000, :gc-pct-tenths 158, :max-gc-ns 811000, :suite "Symbol/keyword interning"}
+  lookup existing keyword: 158.33ms total, 1.58us/op (100000 iters, 41+0 GCs, 41965KB freed, 25.58ms gc 16.1%, 811.00us max)
+;edn; {:label "lookup existing keyword", :iterations 100000, :total-ns 158333000, :mean-ns 1583, :gc-collections 41, :gc-minor 41, :gc-major 0, :gc-bytes-freed 42972874, :gc-ns 25581000, :gc-pct-tenths 161, :max-gc-ns 811000, :suite "Symbol/keyword interning"}
+
+
+===== map_bench =====
+== Map operations ==
+  assoc 100 keys: 499.67ms total, 499.67us/op (1000 iters, 137+1 GCs, 140547KB freed, 70.38ms gc 14.0%, 3.06ms max)
+;edn; {:label "assoc 100 keys", :iterations 1000, :total-ns 499673000, :mean-ns 499673, :gc-collections 138, :gc-minor 137, :gc-major 1, :gc-bytes-freed 143920540, :gc-ns 70375000, :gc-pct-tenths 140, :max-gc-ns 3056000, :suite "Map operations"}
+  assoc 1000 keys: 750.01ms total, 7.50ms/op (100 iters, 157+7 GCs, 160346KB freed, 120.50ms gc 16.0%, 4.68ms max)
+;edn; {:label "assoc 1000 keys", :iterations 100, :total-ns 750013000, :mean-ns 7500130, :gc-collections 164, :gc-minor 157, :gc-major 7, :gc-bytes-freed 164194811, :gc-ns 120500000, :gc-pct-tenths 160, :max-gc-ns 4677000, :suite "Map operations"}
+  get on 100-key map: 26.38ms total, 2.64us/op (10000 iters, 5+0 GCs, 5051KB freed, 3.06ms gc 11.6%, 4.68ms max)
+;edn; {:label "get on 100-key map", :iterations 10000, :total-ns 26376000, :mean-ns 2637, :gc-collections 5, :gc-minor 5, :gc-major 0, :gc-bytes-freed 5172447, :gc-ns 3065000, :gc-pct-tenths 116, :max-gc-ns 4677000, :suite "Map operations"}
+error[MCT001]: in benchmarks/map_bench.mino: < expects numbers
+
+===== micro_bench =====
+== Environment lookup ==
+  local var (let binding): 112.41ms total, 1.12us/op (100000 iters, 45+1 GCs, 45908KB freed, 11.13ms gc 9.8%, 855.00us max)
+;edn; {:label "local var (let binding)", :iterations 100000, :total-ns 112414000, :mean-ns 1124, :gc-collections 46, :gc-minor 45, :gc-major 1, :gc-bytes-freed 47010530, :gc-ns 11128000, :gc-pct-tenths 98, :max-gc-ns 855000, :suite "Environment lookup"}
+  deeply nested let (10 deep): 45.36ms total, 4.54us/op (10000 iters, 20+0 GCs, 20452KB freed, 4.75ms gc 10.4%, 855.00us max)
+;edn; {:label "deeply nested let (10 deep)", :iterations 10000, :total-ns 45356000, :mean-ns 4535, :gc-collections 20, :gc-minor 20, :gc-major 0, :gc-bytes-freed 20943660, :gc-ns 4754000, :gc-pct-tenths 104, :max-gc-ns 855000, :suite "Environment lookup"}
+  global var lookup: 91.09ms total, 910ns/op (100000 iters, 35+0 GCs, 35822KB freed, 7.95ms gc 8.7%, 855.00us max)
+;edn; {:label "global var lookup", :iterations 100000, :total-ns 91095000, :mean-ns 910, :gc-collections 35, :gc-minor 35, :gc-major 0, :gc-bytes-freed 36682078, :gc-ns 7946000, :gc-pct-tenths 87, :max-gc-ns 855000, :suite "Environment lookup"}
+  closure capture (1 var): 90.87ms total, 908ns/op (100000 iters, 35+0 GCs, 35823KB freed, 7.96ms gc 8.7%, 855.00us max)
+;edn; {:label "closure capture (1 var)", :iterations 100000, :total-ns 90874000, :mean-ns 908, :gc-collections 35, :gc-minor 35, :gc-major 0, :gc-bytes-freed 36683574, :gc-ns 7964000, :gc-pct-tenths 87, :max-gc-ns 855000, :suite "Environment lookup"}
+  closure capture (5 vars): 158.71ms total, 1.59us/op (100000 iters, 66+0 GCs, 67549KB freed, 15.54ms gc 9.7%, 855.00us max)
+;edn; {:label "closure capture (5 vars)", :iterations 100000, :total-ns 158713000, :mean-ns 1587, :gc-collections 66, :gc-minor 66, :gc-major 0, :gc-bytes-freed 69170600, :gc-ns 15540000, :gc-pct-tenths 97, :max-gc-ns 855000, :suite "Environment lookup"}
+
+== Allocation pressure ==
+  cons cell creation: 130.54ms total, 1.30us/op (100000 iters, 53+0 GCs, 54240KB freed, 12.93ms gc 9.9%, 855.00us max)
+;edn; {:label "cons cell creation", :iterations 100000, :total-ns 130538000, :mean-ns 1305, :gc-collections 53, :gc-minor 53, :gc-major 0, :gc-bytes-freed 55542726, :gc-ns 12931000, :gc-pct-tenths 99, :max-gc-ns 855000, :suite "Allocation pressure"}
+  small vector [1 2 3]: 94.05ms total, 940ns/op (100000 iters, 35+0 GCs, 35825KB freed, 8.22ms gc 8.7%, 855.00us max)
+;edn; {:label "small vector [1 2 3]", :iterations 100000, :total-ns 94051000, :mean-ns 940, :gc-collections 35, :gc-minor 35, :gc-major 0, :gc-bytes-freed 36685342, :gc-ns 8218000, :gc-pct-tenths 87, :max-gc-ns 855000, :suite "Allocation pressure"}
+  small map {:a 1}: 94.39ms total, 943ns/op (100000 iters, 35+0 GCs, 35823KB freed, 8.30ms gc 8.7%, 855.00us max)
+;edn; {:label "small map {:a 1}", :iterations 100000, :total-ns 94389000, :mean-ns 943, :gc-collections 35, :gc-minor 35, :gc-major 0, :gc-bytes-freed 36683537, :gc-ns 8297000, :gc-pct-tenths 87, :max-gc-ns 855000, :suite "Allocation pressure"}
+  integer boxing: 963.77ms total, 963ns/op (1000000 iters, 351+0 GCs, 359322KB freed, 85.69ms gc 8.8%, 855.00us max)
+;edn; {:label "integer boxing", :iterations 1000000, :total-ns 963774000, :mean-ns 963, :gc-collections 351, :gc-minor 351, :gc-major 0, :gc-bytes-freed 367946501, :gc-ns 85691000, :gc-pct-tenths 88, :max-gc-ns 855000, :suite "Allocation pressure"}
+  string creation: 169.84ms total, 1.70us/op (100000 iters, 61+0 GCs, 62434KB freed, 16.03ms gc 9.4%, 855.00us max)
+;edn; {:label "string creation", :iterations 100000, :total-ns 169844000, :mean-ns 1698, :gc-collections 61, :gc-minor 61, :gc-major 0, :gc-bytes-freed 63933408, :gc-ns 16030000, :gc-pct-tenths 94, :max-gc-ns 855000, :suite "Allocation pressure"}
+  keyword creation (existing): 1.01s total, 1.01us/op (1000000 iters, 351+0 GCs, 359352KB freed, 89.38ms gc 8.8%, 855.00us max)
+;edn; {:label "keyword creation (existing)", :iterations 1000000, :total-ns 1010120000, :mean-ns 1010, :gc-collections 351, :gc-minor 351, :gc-major 0, :gc-bytes-freed 367977177, :gc-ns 89378000, :gc-pct-tenths 88, :max-gc-ns 855000, :suite "Allocation pressure"}
+
+== Lazy vs eager sequences ==
+  (range 100) -- lazy creation: 18.34ms total, 1.83us/op (10000 iters, 7+0 GCs, 7148KB freed, 1.92ms gc 10.4%, 855.00us max)
+;edn; {:label "(range 100) -- lazy creation", :iterations 10000, :total-ns 18335000, :mean-ns 1833, :gc-collections 7, :gc-minor 7, :gc-major 0, :gc-bytes-freed 7320180, :gc-ns 1921000, :gc-pct-tenths 104, :max-gc-ns 855000, :suite "Lazy vs eager sequences"}
+  (doall (range 100)) -- force lazy: 88.52ms total, 88.52us/op (1000 iters, 37+0 GCs, 37399KB freed, 11.72ms gc 13.2%, 855.00us max)
+;edn; {:label "(doall (range 100)) -- force lazy", :iterations 1000, :total-ns 88521000, :mean-ns 88521, :gc-collections 37, :gc-minor 37, :gc-major 0, :gc-bytes-freed 38296646, :gc-ns 11716000, :gc-pct-tenths 132, :max-gc-ns 855000, :suite "Lazy vs eager sequences"}
+  (rangev 100) -- eager vector: 48.08ms total, 4.81us/op (10000 iters, 18+0 GCs, 18400KB freed, 6.22ms gc 12.9%, 855.00us max)
+;edn; {:label "(rangev 100) -- eager vector", :iterations 10000, :total-ns 48077000, :mean-ns 4807, :gc-collections 18, :gc-minor 18, :gc-major 0, :gc-bytes-freed 18841635, :gc-ns 6225000, :gc-pct-tenths 129, :max-gc-ns 855000, :suite "Lazy vs eager sequences"}
+  (into [] (range 100)) -- lazy->vec: 161.69ms total, 161.69us/op (1000 iters, 69+1 GCs, 70852KB freed, 24.87ms gc 15.3%, 1.99ms max)
+;edn; {:label "(into [] (range 100)) -- lazy->vec", :iterations 1000, :total-ns 161689000, :mean-ns 161689, :gc-collections 70, :gc-minor 69, :gc-major 1, :gc-bytes-freed 72552996, :gc-ns 24871000, :gc-pct-tenths 153, :max-gc-ns 1992000, :suite "Lazy vs eager sequences"}
+  (mapv inc (rangev 100)): 25.26ms total, 25.26us/op (1000 iters, 9+0 GCs, 9175KB freed, 3.37ms gc 13.3%, 1.99ms max)
+;edn; {:label "(mapv inc (rangev 100))", :iterations 1000, :total-ns 25259000, :mean-ns 25259, :gc-collections 9, :gc-minor 9, :gc-major 0, :gc-bytes-freed 9396216, :gc-ns 3372000, :gc-pct-tenths 133, :max-gc-ns 1992000, :suite "Lazy vs eager sequences"}
+  (map inc (range 100)) -- lazy: 199.19ms total, 199.19us/op (1000 iters, 69+1 GCs, 70509KB freed, 29.02ms gc 14.5%, 2.44ms max)
+;edn; {:label "(map inc (range 100)) -- lazy", :iterations 1000, :total-ns 199194000, :mean-ns 199194, :gc-collections 70, :gc-minor 69, :gc-major 1, :gc-bytes-freed 72202058, :gc-ns 29021000, :gc-pct-tenths 145, :max-gc-ns 2442000, :suite "Lazy vs eager sequences"}
+  (filterv odd? (rangev 100)): 27.20ms total, 27.20us/op (1000 iters, 8+0 GCs, 8147KB freed, 3.50ms gc 12.8%, 2.44ms max)
+;edn; {:label "(filterv odd? (rangev 100))", :iterations 1000, :total-ns 27198000, :mean-ns 27198, :gc-collections 8, :gc-minor 8, :gc-major 0, :gc-bytes-freed 8343510, :gc-ns 3496000, :gc-pct-tenths 128, :max-gc-ns 2442000, :suite "Lazy vs eager sequences"}
+  (filter odd? (range 100)) -- lazy: 164.05ms total, 164.05us/op (1000 iters, 56+1 GCs, 57782KB freed, 23.63ms gc 14.4%, 2.44ms max)
+;edn; {:label "(filter odd? (range 100)) -- lazy", :iterations 1000, :total-ns 164053000, :mean-ns 164053, :gc-collections 57, :gc-minor 56, :gc-major 1, :gc-bytes-freed 59169200, :gc-ns 23626000, :gc-pct-tenths 144, :max-gc-ns 2442000, :suite "Lazy vs eager sequences"}
+  (doall (take 100 (range 1000))): 219.94ms total, 219.94us/op (1000 iters, 69+1 GCs, 70452KB freed, 30.55ms gc 13.8%, 2.49ms max)
+;edn; {:label "(doall (take 100 (range 1000)))", :iterations 1000, :total-ns 219936000, :mean-ns 219936, :gc-collections 70, :gc-minor 69, :gc-major 1, :gc-bytes-freed 72143422, :gc-ns 30547000, :gc-pct-tenths 138, :max-gc-ns 2488000, :suite "Lazy vs eager sequences"}
+  (drop 50 (range 100)): 134.27ms total, 134.27us/op (1000 iters, 37+1 GCs, 38581KB freed, 19.28ms gc 14.3%, 2.49ms max)
+;edn; {:label "(drop 50 (range 100))", :iterations 1000, :total-ns 134272000, :mean-ns 134272, :gc-collections 38, :gc-minor 37, :gc-major 1, :gc-bytes-freed 39507730, :gc-ns 19280000, :gc-pct-tenths 143, :max-gc-ns 2488000, :suite "Lazy vs eager sequences"}
+
+== Function dispatch ==
+  primitive fn: (+ 1 2): 151.29ms total, 1.51us/op (100000 iters, 47+0 GCs, 48096KB freed, 15.23ms gc 10.0%, 2.49ms max)
+;edn; {:label "primitive fn: (+ 1 2)", :iterations 100000, :total-ns 151286000, :mean-ns 1512, :gc-collections 47, :gc-minor 47, :gc-major 0, :gc-bytes-freed 49250670, :gc-ns 15232000, :gc-pct-tenths 100, :max-gc-ns 2488000, :suite "Function dispatch"}
+  user fn (0 args): 131.88ms total, 1.32us/op (100000 iters, 40+0 GCs, 40943KB freed, 12.40ms gc 9.4%, 2.49ms max)
+;edn; {:label "user fn (0 args)", :iterations 100000, :total-ns 131883000, :mean-ns 1318, :gc-collections 40, :gc-minor 40, :gc-major 0, :gc-bytes-freed 41926131, :gc-ns 12399000, :gc-pct-tenths 94, :max-gc-ns 2488000, :suite "Function dispatch"}
+  user fn (1 arg): 170.19ms total, 1.70us/op (100000 iters, 52+0 GCs, 53224KB freed, 17.81ms gc 10.4%, 2.49ms max)
+;edn; {:label "user fn (1 arg)", :iterations 100000, :total-ns 170194000, :mean-ns 1701, :gc-collections 52, :gc-minor 52, :gc-major 0, :gc-bytes-freed 54502320, :gc-ns 17811000, :gc-pct-tenths 104, :max-gc-ns 2488000, :suite "Function dispatch"}
+  user fn (3 args): 268.80ms total, 2.69us/op (100000 iters, 82+0 GCs, 83920KB freed, 30.06ms gc 11.1%, 2.49ms max)
+;edn; {:label "user fn (3 args)", :iterations 100000, :total-ns 268796000, :mean-ns 2687, :gc-collections 82, :gc-minor 82, :gc-major 0, :gc-bytes-freed 85934849, :gc-ns 30059000, :gc-pct-tenths 111, :max-gc-ns 2488000, :suite "Function dispatch"}
+  user fn (5 args): 380.45ms total, 3.80us/op (100000 iters, 120+0 GCs, 122786KB freed, 40.84ms gc 10.7%, 2.49ms max)
+;edn; {:label "user fn (5 args)", :iterations 100000, :total-ns 380448000, :mean-ns 3804, :gc-collections 120, :gc-minor 120, :gc-major 0, :gc-bytes-freed 125732996, :gc-ns 40839000, :gc-pct-tenths 107, :max-gc-ns 2488000, :suite "Function dispatch"}
+  apply with 3 args: 33.14ms total, 3.31us/op (10000 iters, 9+0 GCs, 9201KB freed, 4.36ms gc 13.1%, 2.49ms max)
+;edn; {:label "apply with 3 args", :iterations 10000, :total-ns 33143000, :mean-ns 3314, :gc-collections 9, :gc-minor 9, :gc-major 0, :gc-bytes-freed 9422364, :gc-ns 4361000, :gc-pct-tenths 131, :max-gc-ns 2488000, :suite "Function dispatch"}
+  higher-order: (map inc [1 2 3]): 78.62ms total, 7.86us/op (10000 iters, 24+0 GCs, 24539KB freed, 9.45ms gc 12.0%, 2.49ms max)
+;edn; {:label "higher-order: (map inc [1 2 3])", :iterations 10000, :total-ns 78616000, :mean-ns 7861, :gc-collections 24, :gc-minor 24, :gc-major 0, :gc-bytes-freed 25128690, :gc-ns 9448000, :gc-pct-tenths 120, :max-gc-ns 2488000, :suite "Function dispatch"}
+
+== Loop/recur ==
+  loop 100 iters: 948.65ms total, 94.86us/op (10000 iters, 253+0 GCs, 258786KB freed, 103.72ms gc 10.9%, 2.49ms max)
+;edn; {:label "loop 100 iters", :iterations 10000, :total-ns 948648000, :mean-ns 94864, :gc-collections 253, :gc-minor 253, :gc-major 0, :gc-bytes-freed 264997385, :gc-ns 103718000, :gc-pct-tenths 109, :max-gc-ns 2488000, :suite "Loop/recur"}
+  loop 1000 iters: 1.18s total, 1.18ms/op (1000 iters, 298+0 GCs, 304829KB freed, 128.78ms gc 10.8%, 2.49ms max)
+;edn; {:label "loop 1000 iters", :iterations 1000, :total-ns 1184096000, :mean-ns 1184096, :gc-collections 298, :gc-minor 298, :gc-major 0, :gc-bytes-freed 312145578, :gc-ns 128780000, :gc-pct-tenths 108, :max-gc-ns 2488000, :suite "Loop/recur"}
+  loop 10000 iters: 1.30s total, 13.02ms/op (100 iters, 305+0 GCs, 312178KB freed, 140.44ms gc 10.7%, 2.49ms max)
+;edn; {:label "loop 10000 iters", :iterations 100, :total-ns 1302006000, :mean-ns 13020060, :gc-collections 305, :gc-minor 305, :gc-major 0, :gc-bytes-freed 319671061, :gc-ns 140438000, :gc-pct-tenths 107, :max-gc-ns 2488000, :suite "Loop/recur"}
+  dotimes 100: 1.62s total, 161.89us/op (10000 iters, 277+2 GCs, 283116KB freed, 349.31ms gc 21.5%, 3.47ms max)
+;edn; {:label "dotimes 100", :iterations 10000, :total-ns 1618947000, :mean-ns 161894, :gc-collections 279, :gc-minor 277, :gc-major 2, :gc-bytes-freed 289910916, :gc-ns 349307000, :gc-pct-tenths 215, :max-gc-ns 3468000, :suite "Loop/recur"}
+  dotimes 1000: 2.59s total, 2.59ms/op (1000 iters, 301+0 GCs, 307415KB freed, 689.84ms gc 26.5%, 3.47ms max)
+;edn; {:label "dotimes 1000", :iterations 1000, :total-ns 2594386000, :mean-ns 2594386, :gc-collections 301, :gc-minor 301, :gc-major 0, :gc-bytes-freed 314793565, :gc-ns 689839000, :gc-pct-tenths 265, :max-gc-ns 3468000, :suite "Loop/recur"}
+  reduce + over 100 ints: 1.57s total, 157.17us/op (10000 iters, 179+0 GCs, 183179KB freed, 439.89ms gc 27.9%, 3.47ms max)
+;edn; {:label "reduce + over 100 ints", :iterations 10000, :total-ns 1571744000, :mean-ns 157174, :gc-collections 179, :gc-minor 179, :gc-major 0, :gc-bytes-freed 187576217, :gc-ns 439890000, :gc-pct-tenths 279, :max-gc-ns 3468000, :suite "Loop/recur"}
+  reduce + over 1000 ints: 1.64s total, 1.64ms/op (1000 iters, 182+0 GCs, 186248KB freed, 457.63ms gc 27.9%, 3.47ms max)
+;edn; {:label "reduce + over 1000 ints", :iterations 1000, :total-ns 1637329000, :mean-ns 1637329, :gc-collections 182, :gc-minor 182, :gc-major 0, :gc-bytes-freed 190718022, :gc-ns 457635000, :gc-pct-tenths 279, :max-gc-ns 3468000, :suite "Loop/recur"}
+
+== String operations ==
+  str concat (3 short): 595.70ms total, 5.96us/op (100000 iters, 60+0 GCs, 61387KB freed, 153.53ms gc 25.7%, 3.47ms max)
+;edn; {:label "str concat (3 short)", :iterations 100000, :total-ns 595702000, :mean-ns 5957, :gc-collections 60, :gc-minor 60, :gc-major 0, :gc-bytes-freed 62860734, :gc-ns 153528000, :gc-pct-tenths 257, :max-gc-ns 3468000, :suite "String operations"}
+  str concat (10 short): 97.31ms total, 9.73us/op (10000 iters, 10+0 GCs, 10224KB freed, 25.67ms gc 26.3%, 3.47ms max)
+;edn; {:label "str concat (10 short)", :iterations 10000, :total-ns 97311000, :mean-ns 9731, :gc-collections 10, :gc-minor 10, :gc-major 0, :gc-bytes-freed 10469504, :gc-ns 25666000, :gc-pct-tenths 263, :max-gc-ns 3468000, :suite "String operations"}
+  format with 1 arg: 49.67ms total, 4.97us/op (10000 iters, 5+0 GCs, 5110KB freed, 12.28ms gc 24.7%, 3.47ms max)
+;edn; {:label "format with 1 arg", :iterations 10000, :total-ns 49670000, :mean-ns 4967, :gc-collections 5, :gc-minor 5, :gc-major 0, :gc-bytes-freed 5232936, :gc-ns 12278000, :gc-pct-tenths 247, :max-gc-ns 3468000, :suite "String operations"}
+  subs (middle of 100-char): 638.38ms total, 6.38us/op (100000 iters, 65+0 GCs, 66530KB freed, 165.43ms gc 25.9%, 3.47ms max)
+;edn; {:label "subs (middle of 100-char)", :iterations 100000, :total-ns 638382000, :mean-ns 6383, :gc-collections 65, :gc-minor 65, :gc-major 0, :gc-bytes-freed 68127535, :gc-ns 165426000, :gc-pct-tenths 259, :max-gc-ns 3468000, :suite "String operations"}
+  split on space: 108.81ms total, 10.88us/op (10000 iters, 11+0 GCs, 11249KB freed, 28.65ms gc 26.3%, 3.47ms max)
+;edn; {:label "split on space", :iterations 10000, :total-ns 108811000, :mean-ns 10881, :gc-collections 11, :gc-minor 11, :gc-major 0, :gc-bytes-freed 11519780, :gc-ns 28647000, :gc-pct-tenths 263, :max-gc-ns 3468000, :suite "String operations"}
+  join with comma: 55.44ms total, 5.54us/op (10000 iters, 6+0 GCs, 6136KB freed, 15.16ms gc 27.3%, 3.47ms max)
+;edn; {:label "join with comma", :iterations 10000, :total-ns 55440000, :mean-ns 5544, :gc-collections 6, :gc-minor 6, :gc-major 0, :gc-bytes-freed 6283534, :gc-ns 15162000, :gc-pct-tenths 273, :max-gc-ns 3468000, :suite "String operations"}
+
+== Reader overhead ==
+  read-string simple: 41.57ms total, 4.16us/op (10000 iters, 4+0 GCs, 4079KB freed, 10.55ms gc 25.3%, 3.47ms max)
+;edn; {:label "read-string simple", :iterations 10000, :total-ns 41574000, :mean-ns 4157, :gc-collections 4, :gc-minor 4, :gc-major 0, :gc-bytes-freed 4177427, :gc-ns 10547000, :gc-pct-tenths 253, :max-gc-ns 3468000, :suite "Reader overhead"}
+  read-string symbol: 40.59ms total, 4.06us/op (10000 iters, 4+0 GCs, 4086KB freed, 10.07ms gc 24.8%, 3.47ms max)
+;edn; {:label "read-string symbol", :iterations 10000, :total-ns 40595000, :mean-ns 4059, :gc-collections 4, :gc-minor 4, :gc-major 0, :gc-bytes-freed 4184870, :gc-ns 10075000, :gc-pct-tenths 248, :max-gc-ns 3468000, :suite "Reader overhead"}
+  read-string list: 70.17ms total, 7.02us/op (10000 iters, 7+0 GCs, 7157KB freed, 18.31ms gc 26.0%, 3.47ms max)
+;edn; {:label "read-string list", :iterations 10000, :total-ns 70167000, :mean-ns 7016, :gc-collections 7, :gc-minor 7, :gc-major 0, :gc-bytes-freed 7329222, :gc-ns 18309000, :gc-pct-tenths 260, :max-gc-ns 3468000, :suite "Reader overhead"}
+  read-string vector: 78.06ms total, 7.81us/op (10000 iters, 8+0 GCs, 8179KB freed, 20.41ms gc 26.1%, 3.47ms max)
+;edn; {:label "read-string vector", :iterations 10000, :total-ns 78061000, :mean-ns 7806, :gc-collections 8, :gc-minor 8, :gc-major 0, :gc-bytes-freed 8375652, :gc-ns 20413000, :gc-pct-tenths 261, :max-gc-ns 3468000, :suite "Reader overhead"}
+  read-string map: 169.13ms total, 16.91us/op (10000 iters, 17+0 GCs, 17398KB freed, 46.18ms gc 27.3%, 4.38ms max)
+;edn; {:label "read-string map", :iterations 10000, :total-ns 169128000, :mean-ns 16912, :gc-collections 17, :gc-minor 17, :gc-major 0, :gc-bytes-freed 17815654, :gc-ns 46180000, :gc-pct-tenths 273, :max-gc-ns 4380000, :suite "Reader overhead"}
+  read-string nested: 20.73ms total, 20.73us/op (1000 iters, 2+0 GCs, 2038KB freed, 6.03ms gc 29.0%, 4.38ms max)
+;edn; {:label "read-string nested", :iterations 1000, :total-ns 20727000, :mean-ns 20727, :gc-collections 2, :gc-minor 2, :gc-major 0, :gc-bytes-freed 2087639, :gc-ns 6025000, :gc-pct-tenths 290, :max-gc-ns 4380000, :suite "Reader overhead"}
+
+
+===== realistic_bench =====
+== Realistic multi-subsystem workloads ==
+  build 5k int-map and sum: 608.75ms total, 60.88ms/op (10 iters, 99+6 GCs, 98834KB freed, 103.24ms gc 16.9%, 7.58ms max)
+;edn; {:label "build 5k int-map and sum", :iterations 10, :total-ns 608750000, :mean-ns 60875000, :gc-collections 105, :gc-minor 99, :gc-major 6, :gc-bytes-freed 101206503, :gc-ns 103243000, :gc-pct-tenths 169, :max-gc-ns 7584000, :suite "Realistic multi-subsystem workloads"}
+  bump 5k int-map values: 957.92ms total, 191.58ms/op (5 iters, 98+4 GCs, 100376KB freed, 164.25ms gc 17.1%, 16.41ms max)
+;edn; {:label "bump 5k int-map values", :iterations 5, :total-ns 957918000, :mean-ns 191583600, :gc-collections 102, :gc-minor 98, :gc-major 4, :gc-bytes-freed 102785968, :gc-ns 164254000, :gc-pct-tenths 171, :max-gc-ns 16410000, :suite "Realistic multi-subsystem workloads"}
+  map/filter/map/reduce over 50k: 19.63s total, 1.96s/op (10 iters, 713+29 GCs, 719574KB freed, 5.33s gc 27.1%, 51.13ms max)
+;edn; {:label "map/filter/map/reduce over 50k", :iterations 10, :total-ns 19633516000, :mean-ns 1963351600, :gc-collections 742, :gc-minor 713, :gc-major 29, :gc-bytes-freed 736844360, :gc-ns 5325401000, :gc-pct-tenths 271, :max-gc-ns 51130000, :suite "Realistic multi-subsystem workloads"}
+  nested vectors 500x100: 6.27s total, 626.59ms/op (10 iters, 349+2 GCs, 365773KB freed, 1.63s gc 25.9%, 51.13ms max)
+;edn; {:label "nested vectors 500x100", :iterations 10, :total-ns 6265927000, :mean-ns 626592700, :gc-collections 351, :gc-minor 349, :gc-major 2, :gc-bytes-freed 374551773, :gc-ns 1627691000, :gc-pct-tenths 259, :max-gc-ns 51130000, :suite "Realistic multi-subsystem workloads"}
+  realize 10k of lazy range: 3.33s total, 166.62ms/op (20 iters, 147+5 GCs, 152135KB freed, 927.26ms gc 27.8%, 51.13ms max)
+;edn; {:label "realize 10k of lazy range", :iterations 20, :total-ns 3332415000, :mean-ns 166620750, :gc-collections 152, :gc-minor 147, :gc-major 5, :gc-bytes-freed 155786936, :gc-ns 927261000, :gc-pct-tenths 278, :max-gc-ns 51130000, :suite "Realistic multi-subsystem workloads"}
+  fibonacci(25): 21.97s total, 2.20s/op (10 iters, 1149+0 GCs, 1169256KB freed, 5.51s gc 25.0%, 51.13ms max)
+;edn; {:label "fibonacci(25)", :iterations 10, :total-ns 21973599000, :mean-ns 2197359900, :gc-collections 1149, :gc-minor 1149, :gc-major 0, :gc-bytes-freed 1197318471, :gc-ns 5506043000, :gc-pct-tenths 250, :max-gc-ns 51130000, :suite "Realistic multi-subsystem workloads"}
+
+
+===== vec_bench =====
+== Vector operations ==
+  conj 1000 elements: 6.07s total, 6.07ms/op (1000 iters, 802+17 GCs, 820690KB freed, 1.00s gc 16.5%, 10.28ms max)
+;edn; {:label "conj 1000 elements", :iterations 1000, :total-ns 6069044000, :mean-ns 6069044, :gc-collections 819, :gc-minor 802, :gc-major 17, :gc-bytes-freed 840386941, :gc-ns 1004574000, :gc-pct-tenths 165, :max-gc-ns 10277000, :suite "Vector operations"}
+  conj 10000 elements: 5.74s total, 57.37ms/op (100 iters, 815+14 GCs, 832842KB freed, 926.48ms gc 16.1%, 12.25ms max)
+;edn; {:label "conj 10000 elements", :iterations 100, :total-ns 5736625000, :mean-ns 57366250, :gc-collections 829, :gc-minor 815, :gc-major 14, :gc-bytes-freed 852830672, :gc-ns 926484000, :gc-pct-tenths 161, :max-gc-ns 12251000, :suite "Vector operations"}
+  nth random on 1000-vec: 53.20ms total, 5.32us/op (10000 iters, 5+0 GCs, 5045KB freed, 7.97ms gc 14.9%, 12.25ms max)
+;edn; {:label "nth random on 1000-vec", :iterations 10000, :total-ns 53200000, :mean-ns 5320, :gc-collections 5, :gc-minor 5, :gc-major 0, :gc-bytes-freed 5166753, :gc-ns 7969000, :gc-pct-tenths 149, :max-gc-ns 12251000, :suite "Vector operations"}
+error[MCT001]: in benchmarks/vec_bench.mino: unhandled exception: not a function (got bool)
+  --> lib/mino/bench.mino:12:35
+   |
+ 12 |         _          (dotimes [_ n] (body-fn))
+    |                                   ^
+
