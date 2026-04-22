@@ -1,5 +1,9 @@
 (ns mino.bench)
 
+(defn- gc-collections-total [s]
+  (+ (or (:collections-minor s) 0)
+     (or (:collections-major s) 0)))
+
 (defn bench
   "Run body-fn for n iterations, return a result map with timing and GC data."
   [label n body-fn]
@@ -13,15 +17,20 @@
         gc-pct     (if (pos? elapsed)
                      (quot (* gc-ns 1000) elapsed)
                      0)]
-    {:label          label
-     :iterations     n
-     :total-ns       elapsed
-     :mean-ns        (quot elapsed n)
-     :gc-collections (- (:collections gc-after) (:collections gc-before))
-     :gc-bytes-freed (- (:bytes-freed gc-after) (:bytes-freed gc-before))
-     :gc-ns          gc-ns
-     :gc-pct-tenths  gc-pct
-     :max-gc-ns      (or (:max-gc-ns gc-after) 0)}))
+    {:label             label
+     :iterations        n
+     :total-ns          elapsed
+     :mean-ns           (quot elapsed n)
+     :gc-collections    (- (gc-collections-total gc-after)
+                           (gc-collections-total gc-before))
+     :gc-minor          (- (or (:collections-minor gc-after) 0)
+                           (or (:collections-minor gc-before) 0))
+     :gc-major          (- (or (:collections-major gc-after) 0)
+                           (or (:collections-major gc-before) 0))
+     :gc-bytes-freed    (- (:bytes-freed gc-after) (:bytes-freed gc-before))
+     :gc-ns             gc-ns
+     :gc-pct-tenths     gc-pct
+     :max-gc-ns         (or (:max-gc-ns gc-after) 0)}))
 
 (defn- format-ns
   "Format nanoseconds as a human-readable string."
@@ -44,7 +53,7 @@
                ": " (format-ns (:total-ns result))
                " total, " (format-ns (:mean-ns result))
                "/op (" (:iterations result) " iters"
-               ", " (:gc-collections result) " GCs"
+               ", " (or (:gc-minor result) 0) "+" (or (:gc-major result) 0) " GCs"
                ", " (quot (:gc-bytes-freed result) 1024) "KB freed"
                ", " (format-ns (or (:gc-ns result) 0)) " gc"
                " " (format-pct-tenths (or (:gc-pct-tenths result) 0))
