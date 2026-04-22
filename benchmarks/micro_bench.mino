@@ -59,7 +59,11 @@
      ["(filterv odd? (rangev 100))" 1000
       (fn [] (filterv odd? (rangev 100)))]
      ["(filter odd? (range 100)) -- lazy" 1000
-      (fn [] (doall (filter odd? (range 100))))]])
+      (fn [] (doall (filter odd? (range 100))))]
+     ["(doall (take 100 (range 1000)))" 1000
+      (fn [] (doall (take 100 (range 1000))))]
+     ["(drop 50 (range 100))" 1000
+      (fn [] (doall (drop 50 (range 100))))]])
 
   ;; --- Dispatch overhead ---
   (bench/run-suite "Function dispatch"
