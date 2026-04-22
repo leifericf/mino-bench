@@ -10,7 +10,8 @@
    "benchmarks/map_bench.mino"
    "benchmarks/intern_bench.mino"
    "benchmarks/eval_bench.mino"
-   "benchmarks/micro_bench.mino"])
+   "benchmarks/micro_bench.mino"
+   "benchmarks/realistic_bench.mino"])
 
 (defn- extract-edn-lines
   "Extract lines prefixed with ;edn; from output, return as vector of strings."
