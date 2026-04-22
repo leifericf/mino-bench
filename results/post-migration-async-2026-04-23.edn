@@ -1,0 +1,66 @@
+;; mino-bench async post-migration
+;; date: 2026-04-23
+;; mino: async-pure-mino branch (local-only, atop v0.42.0)
+;; platform: darwin arm64 (Mach-O 64-bit, -O2)
+;; binary: ./mino/mino (submodule pinned at 0ff4782)
+;;
+;; Notes:
+;;   - Iteration counts reduced 10x from baseline (see
+;;     benchmarks/async_bench_post.mino) because the pure-mino
+;;     channel layer is O(100x-1000x) slower on isolated channel
+;;     ops than the C-backed baseline. mean-ns values remain
+;;     directly comparable to the baseline; total-ns scales with
+;;     iteration count.
+;;   - Channel state lives in a persistent map held by a mino atom.
+;;     Every put!/take!/offer!/poll! allocates a new state map and
+;;     usually a new buf-items vector. GC share on these benches
+;;     sits around 30-40%, up from 10-30% on the C implementation.
+;;   - go-block and realistic-pipeline numbers are the decision
+;;     metric. Raw channel-op ratios matter less because the
+;;     go-block state machine and eval overhead dominate in real
+;;     workloads.
+;;
+;; Headline slowdown vs baseline-async-2026-04-22 (per-op mean):
+;;   offer!/poll! on (chan 1024):        2.55us   -> 1.12ms   (439x)
+;;   offer!/poll! on (chan 1):           2.55us   -> 2.97ms   (1165x)
+;;   put!/take! + drain! on (chan 1):    4.51us   -> 6.10ms   (1353x)
+;;   go (<! ch) with pending put:        920us    -> 25.98ms  (28x)
+;;   go hand-shake producer/consumer:    5.16ms   -> 37.19ms  (7x)
+;;   go with 3 sequential <!:            13.3ms   -> 69.61ms  (5x)
+;;   alts! over 1 ready channel:         68us     -> 6.77ms   (99x)
+;;   alts! over 8 channels:              61us     -> 20.29ms  (333x)
+;;   alts! with :default:                52us     -> 2.58ms   (50x)
+;;   realistic producer-xform-consumer:  233ms    -> 1.87s    (8x)
+;;   fan-in 4->1 via alts! 40 vals:      166ms    -> 847ms    (5x)
+;;
+;; Realistic-pipeline slowdown lands at 5-8x -- within the 3-10x band
+;; the Phase 1 gate was judged acceptable at. Raw channel-op slowdown
+;; of 100-1000x is the cost, but those are not what embed users spend
+;; wall time on.
+;;
+;; GC share climbed from 30-34% (C) to 34-39% (pure-mino) on the
+;; realistic suites. Young-gen allocation rate roughly tripled;
+;; major-gen pressure is similar.
+;;
+;; Each entry below is one EDN map. Format matches baseline snapshot.
+;;
+{:label "offer!/poll! on (chan 1024)", :iterations 10000, :total-ns 11161578000, :mean-ns 1116157, :gc-collections 856, :gc-minor 851, :gc-major 5, :gc-bytes-freed 886858461, :gc-ns 3451779000, :gc-pct-tenths 309, :max-gc-ns 22786000, :suite "async: buffered channel (offer!/poll!, no scheduler)"}
+{:label "offer!/poll! on (chan 1)", :iterations 10000, :total-ns 29701680000, :mean-ns 2970168, :gc-collections 853, :gc-minor 851, :gc-major 2, :gc-bytes-freed 885658223, :gc-ns 10735635000, :gc-pct-tenths 361, :max-gc-ns 62148000, :suite "async: buffered channel (offer!/poll!, no scheduler)"}
+{:label "offer! full returns false", :iterations 10000, :total-ns 20802544000, :mean-ns 2080254, :gc-collections 377, :gc-minor 376, :gc-major 1, :gc-bytes-freed 395893783, :gc-ns 7365330000, :gc-pct-tenths 354, :max-gc-ns 62148000, :suite "async: buffered channel (offer!/poll!, no scheduler)"}
+{:label "poll! empty returns nil", :iterations 10000, :total-ns 8194195000, :mean-ns 819419, :gc-collections 174, :gc-minor 174, :gc-major 0, :gc-bytes-freed 179614467, :gc-ns 3198551000, :gc-pct-tenths 390, :max-gc-ns 62148000, :suite "async: buffered channel (offer!/poll!, no scheduler)"}
+{:label "put!/take! on (chan 1) + drain!", :iterations 1000, :total-ns 6095867000, :mean-ns 6095867, :gc-collections 106, :gc-minor 106, :gc-major 0, :gc-bytes-freed 108754086, :gc-ns 2306307000, :gc-pct-tenths 378, :max-gc-ns 62148000, :suite "async: buffered put!/take! + drain!"}
+{:label "put!/take! on (chan 1024) + drain!", :iterations 1000, :total-ns 6825429000, :mean-ns 6825429, :gc-collections 106, :gc-minor 106, :gc-major 0, :gc-bytes-freed 108822704, :gc-ns 2522413000, :gc-pct-tenths 369, :max-gc-ns 62148000, :suite "async: buffered put!/take! + drain!"}
+{:label "put! with callback + drain!", :iterations 1000, :total-ns 7173387000, :mean-ns 7173387, :gc-collections 98, :gc-minor 98, :gc-major 0, :gc-bytes-freed 100425686, :gc-ns 2561885000, :gc-pct-tenths 357, :max-gc-ns 62148000, :suite "async: buffered put!/take! + drain!"}
+{:label "go (<! ch) with pending put + drain!", :iterations 100, :total-ns 2597724000, :mean-ns 25977240, :gc-collections 33, :gc-minor 33, :gc-major 0, :gc-bytes-freed 33549020, :gc-ns 907160000, :gc-pct-tenths 349, :max-gc-ns 62148000, :suite "async: go-block park/unpark"}
+{:label "go (>! ch v) paired with take! + drain!", :iterations 100, :total-ns 3089733000, :mean-ns 30897330, :gc-collections 38, :gc-minor 37, :gc-major 1, :gc-bytes-freed 46216456, :gc-ns 1095114000, :gc-pct-tenths 354, :max-gc-ns 66426000, :suite "async: go-block park/unpark"}
+{:label "go hand-shake: producer/consumer pair", :iterations 50, :total-ns 1859615000, :mean-ns 37192300, :gc-collections 31, :gc-minor 31, :gc-major 0, :gc-bytes-freed 31305474, :gc-ns 727890000, :gc-pct-tenths 391, :max-gc-ns 66426000, :suite "async: go-block park/unpark"}
+{:label "go with 3 sequential <!", :iterations 50, :total-ns 3480699000, :mean-ns 69613980, :gc-collections 53, :gc-minor 53, :gc-major 0, :gc-bytes-freed 53522722, :gc-ns 1322517000, :gc-pct-tenths 379, :max-gc-ns 66426000, :suite "async: go-block park/unpark"}
+{:label "alts! over 1 ready channel", :iterations 1000, :total-ns 6774173000, :mean-ns 6774173, :gc-collections 93, :gc-minor 93, :gc-major 0, :gc-bytes-freed 95364455, :gc-ns 2507625000, :gc-pct-tenths 370, :max-gc-ns 66426000, :suite "async: alts! arbitration"}
+{:label "alts! over 8 channels, last ready", :iterations 500, :total-ns 10147369000, :mean-ns 20294738, :gc-collections 122, :gc-minor 122, :gc-major 0, :gc-bytes-freed 124804286, :gc-ns 3651119000, :gc-pct-tenths 359, :max-gc-ns 66426000, :suite "async: alts! arbitration"}
+{:label "alts! with :default (nothing ready)", :iterations 1000, :total-ns 2579734000, :mean-ns 2579734, :gc-collections 29, :gc-minor 29, :gc-major 0, :gc-bytes-freed 29883623, :gc-ns 905530000, :gc-pct-tenths 351, :max-gc-ns 66426000, :suite "async: alts! arbitration"}
+{:label "alts! put op ready (buffered)", :iterations 1000, :total-ns 8782492000, :mean-ns 8782492, :gc-collections 94, :gc-minor 94, :gc-major 0, :gc-bytes-freed 96102735, :gc-ns 3060042000, :gc-pct-tenths 348, :max-gc-ns 66426000, :suite "async: alts! arbitration"}
+{:label "(timeout 0) + take! + drain-loop!", :iterations 100, :total-ns 754954000, :mean-ns 7549540, :gc-collections 8, :gc-minor 8, :gc-major 0, :gc-bytes-freed 8195916, :gc-ns 262736000, :gc-pct-tenths 348, :max-gc-ns 66426000, :suite "async: timer / timeout"}
+{:label "alts! over (timeout 0) + dead chan", :iterations 100, :total-ns 890928000, :mean-ns 8909280, :gc-collections 9, :gc-minor 9, :gc-major 0, :gc-bytes-freed 9192745, :gc-ns 305764000, :gc-pct-tenths 343, :max-gc-ns 66426000, :suite "async: timer / timeout"}
+{:label "create 10 overlapping timeouts", :iterations 100, :total-ns 805185000, :mean-ns 8051850, :gc-collections 8, :gc-minor 8, :gc-major 0, :gc-bytes-freed 7370923, :gc-ns 272189000, :gc-pct-tenths 338, :max-gc-ns 66426000, :suite "async: timer / timeout"}
+{:label "producer->xform->consumer, 100 vals", :iterations 10, :total-ns 18731221000, :mean-ns 1873122100, :gc-collections 191, :gc-minor 190, :gc-major 1, :gc-bytes-freed 207414998, :gc-ns 6493460000, :gc-pct-tenths 346, :max-gc-ns 92071000, :suite "async: realistic pipeline"}
+{:label "fan-in 4->1 via alts! over 40 vals", :iterations 10, :total-ns 8473049000, :mean-ns 847304900, :gc-collections 98, :gc-minor 98, :gc-major 0, :gc-bytes-freed 98888653, :gc-ns 3187038000, :gc-pct-tenths 376, :max-gc-ns 92071000, :suite "async: realistic pipeline"}
