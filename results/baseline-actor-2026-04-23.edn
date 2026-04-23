@@ -1,0 +1,51 @@
+;; mino-bench actor baseline
+;; date: 2026-04-23
+;; mino: main @ 0ff4782 (post channel migration)
+;; platform: darwin arm64 (Mach-O 64-bit, -O2)
+;; binary: ./mino/mino (submodule)
+;;
+;; Headline: spawn cost dominates everything.
+;;   spawn empty body:                     ~1.19ms/op
+;;   spawn + immediate empty receive:      ~1.32ms/op
+;;   spawn 100 empty actors:               ~187ms (so ~1.87ms each inc. GC)
+;;
+;; Per-op mailbox cost (amortized across bench body, ignoring spawn):
+;;   self-send+receive, 1000 int msgs:     ~2.15us per (send+receive)
+;;     -- subtracting ~1.2ms spawn base: (3.34ms - 1.2ms)/2000 ops
+;;   external send! only, 1000 msgs:       ~1.18us per send
+;;     -- (3.56ms - 1.2ms)/2000 ops
+;;   100 empty receives:                   ~1.27us per empty-poll
+;;     -- (2.47ms - 1.2ms)/100 receives
+;;
+;; Payload clone cost (scaling with value size, same 50 sends per iter):
+;;   small map {3 keys}:       ~14us/send (excess over empty)
+;;   medium vector [100 ints]: ~16us/send
+;;   large map {100 keys}:     ~19us/send
+;;   nested [10 x 10-kv]:      ~22us/send
+;;
+;; Read: mailbox data structure is fast. Cost center is mino_state_new
+;; + full core-library install per spawn. Single-threaded mino does not
+;; benefit from the mutex-protected isolated state. Pure-mino demotion
+;; expectation: spawn cost becomes ~a few kv cons/env ops (large win),
+;; mailbox op cost likely 3-10x slower (in line with channel migration).
+;;
+;; Each entry below is one EDN map. Format matches async baseline.
+;;
+{:label "spawn empty body", :iterations 500, :total-ns 596792000, :mean-ns 1193584, :gc-collections 3, :gc-minor 2, :gc-major 1, :gc-bytes-freed 1956810, :gc-ns 1729000, :gc-pct-tenths 2, :max-gc-ns 870000, :suite "actor: spawn lifecycle"}
+{:label "spawn body with local def", :iterations 500, :total-ns 620535000, :mean-ns 1241070, :gc-collections 2, :gc-minor 2, :gc-major 0, :gc-bytes-freed 2083449, :gc-ns 584000, :gc-pct-tenths 0, :max-gc-ns 870000, :suite "actor: spawn lifecycle"}
+{:label "spawn body with 10 defs", :iterations 200, :total-ns 572595000, :mean-ns 2862975, :gc-collections 27, :gc-minor 27, :gc-major 0, :gc-bytes-freed 27795768, :gc-ns 9508000, :gc-pct-tenths 16, :max-gc-ns 870000, :suite "actor: spawn lifecycle"}
+{:label "spawn + immediate empty receive", :iterations 500, :total-ns 662285000, :mean-ns 1324570, :gc-collections 2, :gc-minor 2, :gc-major 0, :gc-bytes-freed 2077814, :gc-ns 842000, :gc-pct-tenths 1, :max-gc-ns 870000, :suite "actor: spawn lifecycle"}
+{:label "self-send + receive, 100 int msgs", :iterations 100, :total-ns 247685000, :mean-ns 2476850, :gc-collections 1, :gc-minor 1, :gc-major 0, :gc-bytes-freed 1031567, :gc-ns 399000, :gc-pct-tenths 1, :max-gc-ns 870000, :suite "actor: self-send + receive inside body"}
+{:label "self-send + receive, 1000 int msgs", :iterations 20, :total-ns 66845000, :mean-ns 3342250, :gc-collections 0, :gc-minor 0, :gc-major 0, :gc-bytes-freed 0, :gc-ns 0, :gc-pct-tenths 0, :max-gc-ns 870000, :suite "actor: self-send + receive inside body"}
+{:label "100 empty receives (cold mailbox)", :iterations 500, :total-ns 1234360000, :mean-ns 2468720, :gc-collections 2, :gc-minor 2, :gc-major 0, :gc-bytes-freed 2087808, :gc-ns 723000, :gc-pct-tenths 0, :max-gc-ns 870000, :suite "actor: self-send + receive inside body"}
+{:label "send! 100 int msgs to external actor", :iterations 100, :total-ns 170190000, :mean-ns 1701900, :gc-collections 4, :gc-minor 4, :gc-major 0, :gc-bytes-freed 4155056, :gc-ns 1455000, :gc-pct-tenths 8, :max-gc-ns 870000, :suite "actor: external send! throughput (no receive)"}
+{:label "send! 1000 int msgs to external actor", :iterations 20, :total-ns 71129000, :mean-ns 3556450, :gc-collections 9, :gc-minor 9, :gc-major 0, :gc-bytes-freed 9404499, :gc-ns 5074000, :gc-pct-tenths 71, :max-gc-ns 870000, :suite "actor: external send! throughput (no receive)"}
+{:label "send! 100 keyword msgs", :iterations 100, :total-ns 172313000, :mean-ns 1723130, :gc-collections 4, :gc-minor 4, :gc-major 0, :gc-bytes-freed 4161524, :gc-ns 1566000, :gc-pct-tenths 9, :max-gc-ns 870000, :suite "actor: external send! throughput (no receive)"}
+{:label "send! small map {3 keys}", :iterations 200, :total-ns 353420000, :mean-ns 1767100, :gc-collections 9, :gc-minor 9, :gc-major 0, :gc-bytes-freed 9356873, :gc-ns 3961000, :gc-pct-tenths 11, :max-gc-ns 870000, :suite "actor: send! payload size scaling"}
+{:label "send! medium vector [100 ints]", :iterations 200, :total-ns 391347000, :mean-ns 1956735, :gc-collections 5, :gc-minor 5, :gc-major 0, :gc-bytes-freed 5192988, :gc-ns 3037000, :gc-pct-tenths 7, :max-gc-ns 870000, :suite "actor: send! payload size scaling"}
+{:label "send! large map {100 keys}", :iterations 100, :total-ns 212158000, :mean-ns 2121580, :gc-collections 3, :gc-minor 3, :gc-major 0, :gc-bytes-freed 3111123, :gc-ns 1747000, :gc-pct-tenths 8, :max-gc-ns 870000, :suite "actor: send! payload size scaling"}
+{:label "send! nested [10 x [10 kv map]]", :iterations 100, :total-ns 227071000, :mean-ns 2270710, :gc-collections 3, :gc-minor 3, :gc-major 0, :gc-bytes-freed 3109415, :gc-ns 1867000, :gc-pct-tenths 8, :max-gc-ns 870000, :suite "actor: send! payload size scaling"}
+{:label "spawn 100 empty actors", :iterations 20, :total-ns 3733476000, :mean-ns 186673800, :gc-collections 8, :gc-minor 8, :gc-major 0, :gc-bytes-freed 8341349, :gc-ns 4936000, :gc-pct-tenths 1, :max-gc-ns 870000, :suite "actor: mass spawn + realistic workload"}
+{:label "spawn 100 actors each doing 10 self-sends", :iterations 20, :total-ns 6646233000, :mean-ns 332311650, :gc-collections 19, :gc-minor 19, :gc-major 0, :gc-bytes-freed 19807859, :gc-ns 11404000, :gc-pct-tenths 1, :max-gc-ns 870000, :suite "actor: mass spawn + realistic workload"}
+{:label "realistic: spawn worker + send 100 tasks (no process)", :iterations 50, :total-ns 141582000, :mean-ns 2831640, :gc-collections 3, :gc-minor 3, :gc-major 0, :gc-bytes-freed 3119076, :gc-ns 2047000, :gc-pct-tenths 14, :max-gc-ns 870000, :suite "actor: mass spawn + realistic workload"}
+{:label "realistic: 10 workers, 10 tasks each, send-only", :iterations 50, :total-ns 1256163000, :mean-ns 25123260, :gc-collections 7, :gc-minor 6, :gc-major 1, :gc-bytes-freed 7125710, :gc-ns 6999000, :gc-pct-tenths 5, :max-gc-ns 2687000, :suite "actor: mass spawn + realistic workload"}
