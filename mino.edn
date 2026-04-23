@@ -2,7 +2,7 @@
 ;;   cd mino && cc -std=c99 -O2 -Isrc -o mino src/*.c main.c -lm && cd ..
 ;; Then: ./mino/mino task build, ./mino/mino task bench, etc.
 
-{:paths ["lib" "mino/lib"]
+{:paths ["lib" "mino/lib" "mino"]
  :tasks
  {build           {:doc  "Build the mino binary and C benchmark binaries"
                    :task mino.tasks.builtin/build}
