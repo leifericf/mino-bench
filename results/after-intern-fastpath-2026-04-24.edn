@@ -1,0 +1,39 @@
+;; Bot-fleet scaling after the intern-table fast-path and the
+;; non-interning gensym commits on overnight-2026-04-23.
+;;
+;; Commits (in mino):
+;;   94770ed  Expose :nursery-bytes in gc-stats
+;;   fe98a2c  Fast-path intern-table marking: bypass interior-pointer resolve
+;;   1b8719f  Stop interning gensym output
+;;
+;; Workload: 10000-bot / 5000-bot / 1000-bot fleet spawn from
+;; /tmp/repro46.mino. Each bot creates (chan 8), (atom {...}),
+;; and a parked (go-loop [] (let [msg (<! in-ch)] (when msg ...))).
+;;
+;; Date: 2026-04-24 00:55 CEST.
+;; Config: darwin arm64, -O2, default build.
+
+;; --- N=1000 ---
+;edn; {:label "fleet N=1000 @ 1 MiB",  :total-ns 1862000000, :minor 734, :major 8,  :gc-ns 606000000, :bytes-live 14518}
+;edn; {:label "fleet N=1000 @ 16 MiB", :total-ns 1182000000, :minor  45, :major 3,  :gc-ns 151000000, :bytes-live 12109}
+;edn; {:label "fleet N=1000 @ 64 MiB", :total-ns 1206000000, :minor  11, :major 3,  :gc-ns 128000000, :bytes-live 11336}
+
+;; --- N=5000 ---
+;edn; {:label "fleet N=5000 @ 1 MiB",  :total-ns 15946000000, :minor 3670, :major 14, :gc-ns 7991000000, :bytes-live 60420}
+;edn; {:label "fleet N=5000 @ 16 MiB", :total-ns  7239000000, :minor  229, :major  5, :gc-ns 1674000000, :bytes-live 55076}
+;edn; {:label "fleet N=5000 @ 64 MiB", :total-ns  6799000000, :minor   57, :major  5, :gc-ns 1136000000, :bytes-live 51534}
+
+;; --- N=10000 (Phase-3 gate) ---
+;edn; {:label "fleet N=10000 @ 1 MiB",  :total-ns 48289000000, :minor 7339, :major 16, :gc-ns 29067000000, :bytes-live 159185}
+;edn; {:label "fleet N=10000 @ 16 MiB", :total-ns 16107000000, :minor  458, :major  6, :gc-ns  4345000000, :bytes-live 108783}
+;edn; {:label "fleet N=10000 @ 64 MiB", :total-ns 14219000000, :minor  114, :major  6, :gc-ns  2652000000, :bytes-live 101282}
+
+;; Before the intern fast-path (measured earlier tonight):
+;;   N=10000 @ 16 MiB: 23.4s total, 9.9s GC
+;;   N=10000 @ 64 MiB: 15.0s total, 4.0s GC
+;;
+;; After all three commits:
+;;   N=10000 @ 16 MiB: 16.1s total, 4.3s GC   (-31% total, -56% GC)
+;;   N=10000 @ 64 MiB: 14.2s total, 2.7s GC   (-5% total, -32% GC)
+;;
+;; Gate (<10 s at N=10000) still not met. Mutator floor ~11 s.
