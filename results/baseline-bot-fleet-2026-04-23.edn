@@ -1,0 +1,32 @@
+;; mino-bench: bot-fleet baseline (Phase 3 start)
+;; date: 2026-04-23
+;; mino build: cleanup-actor-shim @ 6f15f887 (Phase 1 + Phase 2 + (gc!) primitive)
+;; machine: Darwin 24.6.0 (same machine as prior baselines in this dir)
+;;
+;; Summary (Suite 3 = primary Phase 3 metric):
+;;   N=100:  1.28s  12.8ms/bot   73+0 GCs
+;;   N=250:  4.15s  16.6ms/bot  183+1 GCs
+;;   N=500:  12.8s  25.7ms/bot  366+2 GCs
+;;   N=1000: 45.8s  45.8ms/bot  733+3 GCs
+;;
+;; Per-bot cost doubles as N doubles -> O(N^2) confirmed.
+;; GC count linear in N; dominant cost is not GC frequency but
+;; per-spawn work that grows with live-set.
+;;
+;; Note: Suite 4 (live-bytes) tripped `unbound symbol: args` at N=500,
+;; consistent with the intern-table UAF documented in
+;; project_phase2_remaining.md. Crash is post-Suite-3, so Suite 3
+;; numbers are clean. Suite 4 will be shrunk to smaller sizes to let
+;; the bench run end-to-end until the intern fix lands.
+
+{:label "(chan 8) alone", :iterations 10000, :total-ns 320125000, :mean-ns 32012, :gc-collections 106, :gc-minor 105, :gc-major 1, :gc-bytes-freed 110329914, :gc-ns 46817000, :gc-pct-tenths 146, :max-gc-ns 1896000, :suite "bot-fleet: per-component allocation"}
+{:label "(atom {:hp 100 :pos [0 0] :inv [] :xp 0}) alone", :iterations 10000, :total-ns 67528000, :mean-ns 6752, :gc-collections 21, :gc-minor 21, :gc-major 0, :gc-bytes-freed 22017703, :gc-ns 10341000, :gc-pct-tenths 153, :max-gc-ns 1896000, :suite "bot-fleet: per-component allocation"}
+{:label "(go :ok) trivial body", :iterations 200, :total-ns 214024000, :mean-ns 1070120, :gc-collections 42, :gc-minor 41, :gc-major 1, :gc-bytes-freed 41975736, :gc-ns 43963000, :gc-pct-tenths 205, :max-gc-ns 4907000, :suite "bot-fleet: per-component allocation"}
+{:label "(go-loop [] (<! ch)) parked on empty chan", :iterations 200, :total-ns 565649000, :mean-ns 2828245, :gc-collections 69, :gc-minor 69, :gc-major 0, :gc-bytes-freed 69719611, :gc-ns 128867000, :gc-pct-tenths 227, :max-gc-ns 4907000, :suite "bot-fleet: per-component allocation"}
+{:label "one bot", :iterations 100, :total-ns 846154000, :mean-ns 8461540, :gc-collections 75, :gc-minor 74, :gc-major 1, :gc-bytes-freed 76701626, :gc-ns 240187000, :gc-pct-tenths 283, :max-gc-ns 13546000, :suite "bot-fleet: composite bot (chan + atom + go-loop)"}
+{:label "batch of 10 bots", :iterations 20, :total-ns 2009361000, :mean-ns 100468050, :gc-collections 149, :gc-minor 147, :gc-major 2, :gc-bytes-freed 153533365, :gc-ns 591246000, :gc-pct-tenths 294, :max-gc-ns 15751000, :suite "bot-fleet: composite bot (chan + atom + go-loop)"}
+{:label "batch of 50 bots", :iterations 5, :total-ns 3079621000, :mean-ns 615924200, :gc-collections 186, :gc-minor 183, :gc-major 3, :gc-bytes-freed 194215524, :gc-ns 933975000, :gc-pct-tenths 303, :max-gc-ns 23881000, :suite "bot-fleet: composite bot (chan + atom + go-loop)"}
+{:suite "bot-fleet: fleet spawn scaling", :label "fleet of 100", :iterations 1, :fleet-size 100, :total-ns 1284626000, :mean-ns 1284626000, :per-bot-ns 12846260, :gc-minor 73, :gc-major 0, :gc-collections 73}
+{:suite "bot-fleet: fleet spawn scaling", :label "fleet of 250", :iterations 1, :fleet-size 250, :total-ns 4146803000, :mean-ns 4146803000, :per-bot-ns 16587212, :gc-minor 183, :gc-major 1, :gc-collections 184}
+{:suite "bot-fleet: fleet spawn scaling", :label "fleet of 500", :iterations 1, :fleet-size 500, :total-ns 12837790000, :mean-ns 12837790000, :per-bot-ns 25675580, :gc-minor 366, :gc-major 2, :gc-collections 368}
+{:suite "bot-fleet: fleet spawn scaling", :label "fleet of 1000", :iterations 1, :fleet-size 1000, :total-ns 45798866000, :mean-ns 45798866000, :per-bot-ns 45798866, :gc-minor 733, :gc-major 3, :gc-collections 736}
