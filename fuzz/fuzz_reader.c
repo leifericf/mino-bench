@@ -22,26 +22,32 @@ static int fuzz_one(const char *data, size_t size)
     memcpy(buf, data, size);
     buf[size] = '\0';
 
-    /* Read all forms until EOF or error. */
+    /* Read all forms until EOF or error. Each fuzz_one call gets a
+     * fresh mino_state so coverage across iterations does not compound. */
     {
-        const char *pos = buf;
-        while (*pos != '\0') {
-            const char *end = NULL;
-            mino_val_t *val = mino_read(pos, &end);
-            if (val == NULL) {
-                if (end != NULL && end > pos) {
-                    /* EOF: only whitespace/comments remaining. */
+        mino_state_t *S = mino_state_new();
+        if (S == NULL) { free(buf); return 0; }
+        {
+            const char *pos = buf;
+            while (*pos != '\0') {
+                const char *end = NULL;
+                mino_val_t *val = mino_read(S, pos, &end);
+                if (val == NULL) {
+                    if (end != NULL && end > pos) {
+                        /* EOF: only whitespace/comments remaining. */
+                        break;
+                    }
+                    /* Parse error: reader rejected this input. Fine. */
                     break;
                 }
-                /* Parse error: reader rejected this input. Fine. */
-                break;
+                if (end == NULL || end <= pos) {
+                    /* Safety: avoid infinite loop if reader doesn't advance. */
+                    break;
+                }
+                pos = end;
             }
-            if (end == NULL || end <= pos) {
-                /* Safety: avoid infinite loop if reader doesn't advance. */
-                break;
-            }
-            pos = end;
         }
+        mino_state_free(S);
     }
 
     free(buf);
