@@ -13,7 +13,8 @@
    "benchmarks/micro_bench.mino"
    "benchmarks/realistic_bench.mino"
    "benchmarks/async_bench.mino"
-   "benchmarks/actor_bench.mino"])
+   "benchmarks/actor_bench.mino"
+   "benchmarks/lazy_bench.mino"])
 
 (defn- extract-edn-lines
   "Extract lines prefixed with ;edn; from output, return as vector of strings."
