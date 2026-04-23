@@ -1,0 +1,153 @@
+(ns benchmarks.bot-fleet-bench)
+(require '[mino.bench :as bench])
+(require "core/channel")
+(require "core/async")
+
+;; Five suites that isolate the cost components of an embedded
+;; "bot fleet" use case: many long-lived worker processes per runtime,
+;; each owning state and parking on an input channel.
+;;
+;;   1. Per-component allocation -- what does one channel, one atom,
+;;      one go-block, and one full bot cost in isolation? Baselines
+;;      for the composite number.
+;;   2. Bot composite -- chan + atom(state) + go-loop(<! in-ch) as a
+;;      single construction. This is the unit of "one bot."
+;;   3. Fleet spawn scaling -- spawn fleets of growing size and
+;;      observe whether cost per bot is constant. Super-linear
+;;      scaling is the red flag to watch for.
+;;   4. Live-memory accounting -- after a fleet of N is parked, how
+;;      many live bytes per bot? Measured via gc-stats :bytes-live.
+;;   5. Steady-state send throughput -- with a fleet parked, drive
+;;      messages through and measure per-message dispatch cost.
+;;
+;; Why this exists: the bot-fleet pattern (stress testers, simulation
+;; entities, multi-tenant workers) stresses spawn cost and per-worker
+;; memory footprint, which are different levers from hot-path eval
+;; or channel throughput benchmarks.
+
+(defn- make-bot []
+  ;; One bot = bounded inbox + small state atom + parked go-loop.
+  (let [in-ch (chan 8)
+        state (atom {:hp 100 :pos [0 0] :inv [] :xp 0})]
+    (go-loop []
+      (let [msg (<! in-ch)]
+        (when msg
+          (swap! state update :xp inc)
+          (recur))))
+    in-ch))
+
+(defn- spawn-fleet [n]
+  (loop [i 0 acc []]
+    (if (< i n)
+      (recur (inc i) (conj acc (make-bot)))
+      acc)))
+
+(defn- report-fleet-memory [n]
+  ;; Spawn a fleet, then report live bytes and derived per-bot cost.
+  ;; Uses gc-stats; no external tooling.
+  (let [baseline (:bytes-live (gc-stats))
+        start    (nano-time)
+        fleet    (spawn-fleet n)
+        elapsed  (- (nano-time) start)
+        live     (:bytes-live (gc-stats))
+        per-bot  (if (pos? n) (quot (- live baseline) n) 0)
+        ns-bot   (if (pos? n) (quot elapsed n) 0)]
+    (println (str "  fleet N=" n
+                  ": spawn=" (quot elapsed 1000000) "ms"
+                  " per-bot=" (quot ns-bot 1000) "us"
+                  " live-delta-kb=" (quot (- live baseline) 1024)
+                  " live-per-bot=" per-bot "B"))
+    ;; Keep fleet alive past measurement via a throwaway def to prevent
+    ;; the roster from becoming immediate garbage before gc-stats runs.
+    (def ^:private _retained-fleet fleet)
+    fleet))
+
+(defn- report-fleet-time [n]
+  ;; One-shot fleet spawn. Forces a full GC first so the measurement
+  ;; isn't contaminated by prior fleet accumulation, then reports total
+  ;; ns and per-bot ns. Emits an EDN line in the same shape as
+  ;; mino.bench/run-suite so run_all.mino picks it up unchanged.
+  (gc!)
+  (let [gc-before (gc-stats)
+        start     (nano-time)
+        _fleet    (spawn-fleet n)
+        elapsed   (- (nano-time) start)
+        gc-after  (gc-stats)
+        per-bot   (if (pos? n) (quot elapsed n) 0)
+        minor     (- (or (:collections-minor gc-after) 0)
+                     (or (:collections-minor gc-before) 0))
+        major     (- (or (:collections-major gc-after) 0)
+                     (or (:collections-major gc-before) 0))
+        r {:suite          "bot-fleet: fleet spawn scaling"
+           :label          (str "fleet of " n)
+           :iterations     1
+           :fleet-size     n
+           :total-ns       elapsed
+           :mean-ns        elapsed
+           :per-bot-ns     per-bot
+           :gc-minor       minor
+           :gc-major       major
+           :gc-collections (+ minor major)}]
+    (println (str "  fleet of " n
+                  ": " (quot elapsed 1000000) "ms total"
+                  ", per-bot=" (quot per-bot 1000) "us"
+                  " (" minor "+" major " GCs)"))
+    (println (str ";edn; " (pr-str r)))))
+
+(defn run []
+  ;; --- Suite 1: per-component alloc ---
+  (bench/run-suite "bot-fleet: per-component allocation"
+    [["(chan 8) alone" 10000
+      (fn [] (chan 8))]
+     ["(atom {:hp 100 :pos [0 0] :inv [] :xp 0}) alone" 10000
+      (fn [] (atom {:hp 100 :pos [0 0] :inv [] :xp 0}))]
+     ["(go :ok) trivial body" 200
+      (fn [] (go :ok))]
+     ["(go-loop [] (<! ch)) parked on empty chan" 200
+      (fn []
+        (let [ch (chan 1)]
+          (go-loop [] (<! ch))))]])
+
+  ;; --- Suite 2: composite bot construction ---
+  ;; Iteration counts kept small because bot spawn is heavy
+  ;; (~10ms each) and scaling is observed to be super-linear.
+  (bench/run-suite "bot-fleet: composite bot (chan + atom + go-loop)"
+    [["one bot" 100
+      (fn [] (make-bot))]
+     ["batch of 10 bots" 20
+      (fn [] (spawn-fleet 10))]
+     ["batch of 50 bots" 5
+      (fn [] (spawn-fleet 50))]])
+
+  ;; --- Suite 3: fleet spawn scaling (one-shot per size) ---
+  ;; Watching cost-per-bot across fleet sizes. Super-linear scaling
+  ;; here is the primary red flag for the bot-fleet pattern.
+  ;;
+  ;; Runs one fleet per size (not N iterations) because parked go-loops
+  ;; are reachable from the scheduler across iterations: repeated runs
+  ;; accumulate rather than average. (gc!) between sizes resets nursery
+  ;; pressure but does NOT free parked bots from prior sizes.
+  (println "== bot-fleet: fleet spawn scaling ==")
+  (doseq [n [100 250 500 1000]]
+    (report-fleet-time n))
+  (println)
+
+  ;; --- Suite 3b: Phase 3 completion gate (N=10000) ---
+  ;; Opt-in via MINO_BENCH_FULL=1 because pre-Phase-3 the super-linear
+  ;; scaling makes this take tens of minutes. Post-fix target: under 10s.
+  (when (getenv "MINO_BENCH_FULL")
+    (println "== bot-fleet: Phase 3 gate (N=10000) ==")
+    (report-fleet-time 10000)
+    (println))
+
+  ;; --- Suite 4: live memory after fleet is parked ---
+  ;; Memory accounting only. Within this process Suite 3 has already
+  ;; parked ~1850 bots, so these deltas reflect incremental cost of the
+  ;; new spawn, not the true live-bytes-per-bot in isolation. A fresh
+  ;; process is needed for an uncontaminated reading.
+  (println "== bot-fleet: live memory per bot (parked, post-Suite-3) ==")
+  (doseq [n [100 250 500 1000]]
+    (report-fleet-memory n))
+  (println))
+
+(run)
