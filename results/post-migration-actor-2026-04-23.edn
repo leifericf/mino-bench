@@ -1,0 +1,52 @@
+;; mino-bench actor post-migration
+;; date: 2026-04-23
+;; mino: async-pure-mino @ 979ac40 (actor demotion)
+;; platform: darwin arm64 (Mach-O 64-bit, -O2)
+;; binary: ./mino/mino (submodule)
+;;
+;; Headline speedup vs baseline-actor-2026-04-23 (per-op mean):
+;;
+;;   spawn empty body:             1.19ms  -> 10.1us   (118x faster)
+;;   spawn body w/ local def:      1.24ms  -> 7.3us    (170x faster)
+;;   spawn body w/ 10 defs:        2.86ms  -> 28.9us   (99x faster)
+;;   spawn + empty receive:        1.32ms  -> 11.3us   (117x faster)
+;;   spawn 100 empty actors:       187ms   -> 0.94ms   (198x faster)
+;;   spawn 100 actors x 10 self-sends: 332ms -> 51ms   (6.5x faster)
+;;   realistic: spawn + 100 tasks: 2.83ms  -> 2.31ms   (1.23x faster)
+;;   realistic: 10 workers x 10:   25.1ms  -> 3.07ms   (8.2x faster)
+;;
+;; Pure throughput (where pure-mino is slower, as expected):
+;;
+;;   self-send+receive 1000 int:   3.34ms  -> 28.7ms   (8.58x slower)
+;;   external send! 1000 int:      3.56ms  -> 14.1ms   (3.98x slower)
+;;
+;; Everything in the 100-ops range is equivalent or faster (pure-mino
+;; benefits from removing spawn overhead which used to pad the numbers).
+;;
+;; Read: for realistic embed workloads, the pure-mino actor is 1.2-8x
+;; faster because mino_state_new + install_core per-actor was the
+;; dominant cost and is gone. Raw 1000-msg throughput loses 4-9x on
+;; the atom+persistent-map swap! churn, but user code does not spawn
+;; 1000 msgs at one actor without processing. The C mutex and cross-
+;; state serialization bought nothing for single-threaded mino.
+;;
+;; Each entry below is one EDN map.
+;;
+{:label "spawn empty body", :iterations 500, :total-ns 5051000, :mean-ns 10102, :gc-collections 2, :gc-minor 1, :gc-major 1, :gc-bytes-freed 887461, :gc-ns 1686000, :gc-pct-tenths 333, :max-gc-ns 1024000, :suite "actor: spawn lifecycle"}
+{:label "spawn body with local def", :iterations 500, :total-ns 3645000, :mean-ns 7290, :gc-collections 1, :gc-minor 1, :gc-major 0, :gc-bytes-freed 1039352, :gc-ns 332000, :gc-pct-tenths 91, :max-gc-ns 1024000, :suite "actor: spawn lifecycle"}
+{:label "spawn body with 10 defs", :iterations 200, :total-ns 5780000, :mean-ns 28900, :gc-collections 1, :gc-minor 1, :gc-major 0, :gc-bytes-freed 1038385, :gc-ns 401000, :gc-pct-tenths 69, :max-gc-ns 1024000, :suite "actor: spawn lifecycle"}
+{:label "spawn + immediate empty receive", :iterations 500, :total-ns 5639000, :mean-ns 11278, :gc-collections 2, :gc-minor 2, :gc-major 0, :gc-bytes-freed 2083376, :gc-ns 979000, :gc-pct-tenths 173, :max-gc-ns 1024000, :suite "actor: spawn lifecycle"}
+{:label "self-send + receive, 100 int msgs", :iterations 100, :total-ns 237181000, :mean-ns 2371810, :gc-collections 75, :gc-minor 75, :gc-major 0, :gc-bytes-freed 77940983, :gc-ns 34996000, :gc-pct-tenths 147, :max-gc-ns 1024000, :suite "actor: self-send + receive inside body"}
+{:label "self-send + receive, 1000 int msgs", :iterations 20, :total-ns 573862000, :mean-ns 28693100, :gc-collections 156, :gc-minor 155, :gc-major 1, :gc-bytes-freed 162979886, :gc-ns 93338000, :gc-pct-tenths 162, :max-gc-ns 2334000, :suite "actor: self-send + receive inside body"}
+{:label "100 empty receives (cold mailbox)", :iterations 500, :total-ns 355955000, :mean-ns 711910, :gc-collections 97, :gc-minor 97, :gc-major 0, :gc-bytes-freed 101223471, :gc-ns 54887000, :gc-pct-tenths 154, :max-gc-ns 2334000, :suite "actor: self-send + receive inside body"}
+{:label "send! 100 int msgs to external actor", :iterations 100, :total-ns 141274000, :mean-ns 1412740, :gc-collections 35, :gc-minor 35, :gc-major 0, :gc-bytes-freed 36441005, :gc-ns 24876000, :gc-pct-tenths 176, :max-gc-ns 2334000, :suite "actor: external send! throughput (no receive)"}
+{:label "send! 1000 int msgs to external actor", :iterations 20, :total-ns 282965000, :mean-ns 14148250, :gc-collections 72, :gc-minor 71, :gc-major 1, :gc-bytes-freed 75205522, :gc-ns 54041000, :gc-pct-tenths 190, :max-gc-ns 2337000, :suite "actor: external send! throughput (no receive)"}
+{:label "send! 100 keyword msgs", :iterations 100, :total-ns 132744000, :mean-ns 1327440, :gc-collections 36, :gc-minor 36, :gc-major 0, :gc-bytes-freed 37483128, :gc-ns 26745000, :gc-pct-tenths 201, :max-gc-ns 2337000, :suite "actor: external send! throughput (no receive)"}
+{:label "send! small map {3 keys}", :iterations 200, :total-ns 315978000, :mean-ns 1579890, :gc-collections 71, :gc-minor 71, :gc-major 0, :gc-bytes-freed 73904776, :gc-ns 66771000, :gc-pct-tenths 211, :max-gc-ns 2502000, :suite "actor: send! payload size scaling"}
+{:label "send! medium vector [100 ints]", :iterations 200, :total-ns 211350000, :mean-ns 1056750, :gc-collections 35, :gc-minor 35, :gc-major 0, :gc-bytes-freed 36437288, :gc-ns 53503000, :gc-pct-tenths 253, :max-gc-ns 5007000, :suite "actor: send! payload size scaling"}
+{:label "send! large map {100 keys}", :iterations 100, :total-ns 116989000, :mean-ns 1169890, :gc-collections 18, :gc-minor 17, :gc-major 1, :gc-bytes-freed 18956656, :gc-ns 31012000, :gc-pct-tenths 265, :max-gc-ns 5007000, :suite "actor: send! payload size scaling"}
+{:label "send! nested [10 x [10 kv map]]", :iterations 100, :total-ns 68408000, :mean-ns 684080, :gc-collections 18, :gc-minor 18, :gc-major 0, :gc-bytes-freed 18749100, :gc-ns 14495000, :gc-pct-tenths 211, :max-gc-ns 5007000, :suite "actor: send! payload size scaling"}
+{:label "spawn 100 empty actors", :iterations 20, :total-ns 18852000, :mean-ns 942600, :gc-collections 5, :gc-minor 5, :gc-major 0, :gc-bytes-freed 5201714, :gc-ns 3398000, :gc-pct-tenths 180, :max-gc-ns 5007000, :suite "actor: mass spawn + realistic workload"}
+{:label "spawn 100 actors each doing 10 self-sends", :iterations 20, :total-ns 1019416000, :mean-ns 50970800, :gc-collections 164, :gc-minor 163, :gc-major 1, :gc-bytes-freed 170097589, :gc-ns 269872000, :gc-pct-tenths 264, :max-gc-ns 5382000, :suite "actor: mass spawn + realistic workload"}
+{:label "realistic: spawn worker + send 100 tasks (no process)", :iterations 50, :total-ns 115266000, :mean-ns 2305320, :gc-collections 17, :gc-minor 17, :gc-major 0, :gc-bytes-freed 17690443, :gc-ns 32493000, :gc-pct-tenths 281, :max-gc-ns 5382000, :suite "actor: mass spawn + realistic workload"}
+{:label "realistic: 10 workers, 10 tasks each, send-only", :iterations 50, :total-ns 153591000, :mean-ns 3071820, :gc-collections 21, :gc-minor 21, :gc-major 0, :gc-bytes-freed 21495269, :gc-ns 42129000, :gc-pct-tenths 274, :max-gc-ns 5382000, :suite "actor: mass spawn + realistic workload"}

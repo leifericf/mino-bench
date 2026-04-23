@@ -1,5 +1,6 @@
 (ns benchmarks.actor-bench)
 (require '[mino.bench :as bench])
+(require "core/actor")
 
 ;; Five suites chosen to isolate distinct cost buckets in the current
 ;; C-backed actor implementation (clone.c):
