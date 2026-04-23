@@ -1,0 +1,44 @@
+;; mino-bench: bot-fleet after Phase 3 perf fixes
+;; date: 2026-04-23
+;; mino build: cleanup-actor-shim @ 1c6372f
+;;   - c9e1d61 "Keep range index valid across minor cycles"
+;;   - 1c6372f "Split gc_all into young and old lists"
+;; machine: Darwin 24.6.0 (same as baseline-bot-fleet-2026-04-23.edn)
+;;
+;; Summary (Suite 3 = primary Phase 3 metric):
+;;   N=100:  0.33s  3.3ms/bot   73+0 GCs  (baseline 12.8 -> 3.9x faster)
+;;   N=250:  0.94s  3.8ms/bot  183+1 GCs  (baseline 16.6 -> 4.4x)
+;;   N=500:  2.28s  4.6ms/bot  366+2 GCs  (baseline 25.7 -> 5.6x)
+;;   N=1000: 6.20s  6.2ms/bot  733+3 GCs  (baseline 45.8 -> 7.4x)
+;;
+;; Per-bot scaling: 3.3 -> 6.2 ms over 10x fleet (1.9x growth, near-linear).
+;; Previously 12.8 -> 45.8 ms (3.6x per 10x fleet, O(N^2) confirmed).
+;;
+;; Two wins compose here:
+;;   1. Range-index stays valid across minor cycles, so minor GCs no
+;;      longer rebuild the entire sorted index (was O(n log n) every
+;;      minor, running outside the :total-gc-ns timing window and thus
+;;      invisible as "mutator" cost in earlier measurements).
+;;   2. gc_all split into young/old lists. Minor sweep now walks only
+;;      young headers (~nursery-sized working set) instead of the full
+;;      heap linked-list where every OLD entry cost a pointer-chase to
+;;      skip.
+;;
+;; Remaining super-linearity (1.9x per 10x N) is in minor mark + stack
+;; scan, both O(young-live-set + remset-size). Likely ~constant per-bot
+;; with further tuning, but not pursued here because the pre-existing
+;; intern-table UAF (see memory project_phase2_remaining.md) flakes the
+;; regression suite at these post-fix speeds and blocks the N=10000
+;; completion gate.
+
+{:label "(chan 8) alone", :iterations 10000, :total-ns 164387000, :mean-ns 16438, :gc-collections 106, :gc-minor 105, :gc-major 1, :gc-bytes-freed 110330514, :gc-ns 41000000, :gc-pct-tenths 249, :max-gc-ns 1685000, :suite "bot-fleet: per-component allocation"}
+{:label "(atom {:hp 100 :pos [0 0] :inv [] :xp 0}) alone", :iterations 10000, :total-ns 31374000, :mean-ns 3137, :gc-collections 21, :gc-minor 21, :gc-major 0, :gc-bytes-freed 22018407, :gc-ns 7704000, :gc-pct-tenths 245, :max-gc-ns 1685000, :suite "bot-fleet: per-component allocation"}
+{:label "(go :ok) trivial body", :iterations 200, :total-ns 90610000, :mean-ns 453050, :gc-collections 42, :gc-minor 41, :gc-major 1, :gc-bytes-freed 42000068, :gc-ns 30859000, :gc-pct-tenths 340, :max-gc-ns 3499000, :suite "bot-fleet: per-component allocation"}
+{:label "(go-loop [] (<! ch)) parked on empty chan", :iterations 200, :total-ns 233080000, :mean-ns 1165400, :gc-collections 69, :gc-minor 69, :gc-major 0, :gc-bytes-freed 69794534, :gc-ns 105448000, :gc-pct-tenths 452, :max-gc-ns 7649000, :suite "bot-fleet: per-component allocation"}
+{:label "one bot", :iterations 100, :total-ns 238025000, :mean-ns 2380250, :gc-collections 75, :gc-minor 74, :gc-major 1, :gc-bytes-freed 76929361, :gc-ns 115251000, :gc-pct-tenths 484, :max-gc-ns 8530000, :suite "bot-fleet: composite bot (chan + atom + go-loop)"}
+{:label "batch of 10 bots", :iterations 20, :total-ns 545780000, :mean-ns 27289000, :gc-collections 149, :gc-minor 147, :gc-major 2, :gc-bytes-freed 153814338, :gc-ns 279993000, :gc-pct-tenths 513, :max-gc-ns 8530000, :suite "bot-fleet: composite bot (chan + atom + go-loop)"}
+{:label "batch of 50 bots", :iterations 5, :total-ns 854301000, :mean-ns 170860200, :gc-collections 185, :gc-minor 183, :gc-major 2, :gc-bytes-freed 190345399, :gc-ns 484802000, :gc-pct-tenths 567, :max-gc-ns 25659000, :suite "bot-fleet: composite bot (chan + atom + go-loop)"}
+{:suite "bot-fleet: fleet spawn scaling", :label "fleet of 100", :iterations 1, :fleet-size 100, :total-ns 332673000, :mean-ns 332673000, :per-bot-ns 3326730, :gc-minor 73, :gc-major 0, :gc-collections 73}
+{:suite "bot-fleet: fleet spawn scaling", :label "fleet of 250", :iterations 1, :fleet-size 250, :total-ns 943082000, :mean-ns 943082000, :per-bot-ns 3772328, :gc-minor 183, :gc-major 1, :gc-collections 184}
+{:suite "bot-fleet: fleet spawn scaling", :label "fleet of 500", :iterations 1, :fleet-size 500, :total-ns 2279720000, :mean-ns 2279720000, :per-bot-ns 4559440, :gc-minor 366, :gc-major 2, :gc-collections 368}
+{:suite "bot-fleet: fleet spawn scaling", :label "fleet of 1000", :iterations 1, :fleet-size 1000, :total-ns 6197996000, :mean-ns 6197996000, :per-bot-ns 6197996, :gc-minor 733, :gc-major 3, :gc-collections 736}
