@@ -1,0 +1,69 @@
+;; mino-bench lazy baseline (C-backed vs pure-mino A/B)
+;; date: 2026-04-23
+;; mino: main @ 0ff4782 (post channel migration)
+;; platform: darwin arm64 (Mach-O 64-bit, -O2)
+;; binary: ./mino/mino (submodule)
+;;
+;; Each suite runs the C primitive (map/filter/take) and an inline
+;; pure-mino equivalent (map-pure, filter-pure, take-pure) written
+;; directly over lazy-seq + cons. The ratio is the measured slowdown
+;; of removing the C fast-paths.
+;;
+;; Headline ratios (pure-mino / C, lower is better for pure-mino):
+;;
+;;   map inc (range 100)           :  258us  ->  524us   (2.02x)
+;;   map inc (range 1000)          : 5026us  -> 8387us   (1.67x)
+;;   filter odd? (range 1000)      : 3638us  -> 7620us   (2.09x)
+;;   map.map.map over 500          : 4388us  -> 9019us   (2.05x)
+;;   filter.map.filter over 500    : 3422us  ->10696us   (3.12x)  *
+;;   take 10 (map inc (range 10k)) :   58us  ->  152us   (2.60x)
+;;   take 100 (filter (range 10k)) :  883us  -> 2134us   (2.42x)
+;;   realistic single pipeline     :  587us  -> 1233us   (2.10x)
+;;   realistic double pipeline     : 2376us  -> 5298us   (2.23x)
+;;
+;;     * filter.map.filter variance is noisy (saw 2.57x on a prior run,
+;;       3.12x on this capture). GC major sweeps correlate with the
+;;       outlier; realistic pipeline is a cleaner signal.
+;;
+;; Reference comparison (eager vs lazy):
+;;   eager mapv+rangev 1000        : 1923us
+;;   C lazy map+range 1000         : 6333us   (3.29x slower than eager)
+;;   pure-mino lazy map+range 1000 : 9905us   (5.15x slower than eager)
+;;
+;; Gate B (the stricter 2x threshold for lazy):
+;;   Realistic single pipeline:  2.10x -- at the line
+;;   Realistic double pipeline:  2.23x -- over the line
+;;   Most single ops:            2.0-2.6x -- over the line
+;;
+;; Read: the C lazy fast-paths (prim_lazy.c ~360 LOC) buy a consistent
+;; ~2-2.5x speedup on lazy pipelines over the pure-mino lazy-seq+cons
+;; construction. This is a real-but-modest win on a ~360 LOC footprint.
+;; The migration is a genuine trade-off call, not a slam dunk.
+;;
+;; Note: for most user workloads, the eager path (mapv + rangev) is
+;; 3-5x faster than either lazy variant. Laziness matters for take-
+;; subset and infinite-seq use cases, not for general reduction. A
+;; reasonable alternative to full removal is: keep C lazy-map-1 /
+;; lazy-filter / lazy-take but document the eager path as the default.
+;;
+{:label "C: (reduce + 0 (map inc (range 100)))", :iterations 5000, :total-ns 1294983000, :mean-ns 258996, :gc-collections 437, :gc-minor 429, :gc-major 8, :gc-bytes-freed 449263026, :gc-ns 186337000, :gc-pct-tenths 143, :max-gc-ns 2716000, :suite "lazy: single-op realization (reduce over result)"}
+{:label "mino: (reduce + 0 (map-pure inc (range 100)))", :iterations 5000, :total-ns 2622260000, :mean-ns 524452, :gc-collections 703, :gc-minor 688, :gc-major 15, :gc-bytes-freed 721254128, :gc-ns 342169000, :gc-pct-tenths 130, :max-gc-ns 2792000, :suite "lazy: single-op realization (reduce over result)"}
+{:label "C: (reduce + 0 (map inc (range 1000)))", :iterations 1000, :total-ns 5025875000, :mean-ns 5025875, :gc-collections 1201, :gc-minor 1022, :gc-major 179, :gc-bytes-freed 1071702383, :gc-ns 1176745000, :gc-pct-tenths 234, :max-gc-ns 11039000, :suite "lazy: single-op realization (reduce over result)"}
+{:label "mino: (reduce + 0 (map-pure inc (range 1000)))", :iterations 1000, :total-ns 8386869000, :mean-ns 8386869, :gc-collections 1718, :gc-minor 1541, :gc-major 177, :gc-bytes-freed 1616440738, :gc-ns 1679861000, :gc-pct-tenths 200, :max-gc-ns 11039000, :suite "lazy: single-op realization (reduce over result)"}
+{:label "C: (reduce + 0 (filter odd? (range 1000)))", :iterations 1000, :total-ns 3637695000, :mean-ns 3637695, :gc-collections 814, :gc-minor 756, :gc-major 58, :gc-bytes-freed 791731010, :gc-ns 685034000, :gc-pct-tenths 188, :max-gc-ns 11039000, :suite "lazy: single-op realization (reduce over result)"}
+{:label "mino: (reduce + 0 (filter-pure odd? (range 1000)))", :iterations 1000, :total-ns 7619739000, :mean-ns 7619739, :gc-collections 1526, :gc-minor 1411, :gc-major 115, :gc-bytes-freed 1480123530, :gc-ns 1366349000, :gc-pct-tenths 179, :max-gc-ns 11039000, :suite "lazy: single-op realization (reduce over result)"}
+{:label "C: map . map . map over 500", :iterations 1000, :total-ns 4387608000, :mean-ns 4387608, :gc-collections 946, :gc-minor 856, :gc-major 90, :gc-bytes-freed 896834280, :gc-ns 909719000, :gc-pct-tenths 207, :max-gc-ns 11039000, :suite "lazy: stacked chains (3-4 ops)"}
+{:label "mino: map-pure . map-pure . map-pure over 500", :iterations 1000, :total-ns 9018714000, :mean-ns 9018714, :gc-collections 1787, :gc-minor 1634, :gc-major 153, :gc-bytes-freed 1713614290, :gc-ns 1706470000, :gc-pct-tenths 189, :max-gc-ns 11039000, :suite "lazy: stacked chains (3-4 ops)"}
+{:label "C: filter . map . filter over 500", :iterations 1000, :total-ns 3422299000, :mean-ns 3422299, :gc-collections 756, :gc-minor 702, :gc-major 54, :gc-bytes-freed 737356426, :gc-ns 653715000, :gc-pct-tenths 191, :max-gc-ns 11039000, :suite "lazy: stacked chains (3-4 ops)"}
+{:label "mino: pure filter . map . filter over 500", :iterations 1000, :total-ns 10695560000, :mean-ns 10695560, :gc-collections 1726, :gc-minor 1601, :gc-major 125, :gc-bytes-freed 1678475024, :gc-ns 2476146000, :gc-pct-tenths 231, :max-gc-ns 29193000, :suite "lazy: stacked chains (3-4 ops)"}
+{:label "C: (take 10 (map inc (range 10000)))", :iterations 5000, :total-ns 291160000, :mean-ns 58232, :gc-collections 66, :gc-minor 66, :gc-major 0, :gc-bytes-freed 68695576, :gc-ns 59437000, :gc-pct-tenths 204, :max-gc-ns 29193000, :suite "lazy: take subset (partial realization)"}
+{:label "mino: (take-pure 10 (map-pure inc (range 10000)))", :iterations 5000, :total-ns 757668000, :mean-ns 151533, :gc-collections 121, :gc-minor 121, :gc-major 0, :gc-bytes-freed 126007012, :gc-ns 167953000, :gc-pct-tenths 221, :max-gc-ns 29193000, :suite "lazy: take subset (partial realization)"}
+{:label "C: (take 100 (filter odd? (range 10000)))", :iterations 1000, :total-ns 883090000, :mean-ns 883090, :gc-collections 174, :gc-minor 170, :gc-major 4, :gc-bytes-freed 180046168, :gc-ns 192273000, :gc-pct-tenths 217, :max-gc-ns 29193000, :suite "lazy: take subset (partial realization)"}
+{:label "mino: (take-pure 100 (filter-pure odd? (range 10000)))", :iterations 1000, :total-ns 2134125000, :mean-ns 2134125, :gc-collections 375, :gc-minor 366, :gc-major 9, :gc-bytes-freed 382442541, :gc-ns 479580000, :gc-pct-tenths 224, :max-gc-ns 29193000, :suite "lazy: take subset (partial realization)"}
+{:label "eager: (reduce + 0 (mapv inc (rangev 1000)))", :iterations 1000, :total-ns 1922753000, :mean-ns 1922753, :gc-collections 391, :gc-minor 367, :gc-major 24, :gc-bytes-freed 385806297, :gc-ns 470429000, :gc-pct-tenths 244, :max-gc-ns 29193000, :suite "lazy: vs eager (mapv + rangev)"}
+{:label "C lazy: (reduce + 0 (map inc (range 1000)))", :iterations 1000, :total-ns 6332777000, :mean-ns 6332777, :gc-collections 1148, :gc-minor 1022, :gc-major 126, :gc-bytes-freed 1070795670, :gc-ns 1762099000, :gc-pct-tenths 278, :max-gc-ns 29193000, :suite "lazy: vs eager (mapv + rangev)"}
+{:label "mino lazy: (reduce + 0 (map-pure inc (range 1000)))", :iterations 1000, :total-ns 9904731000, :mean-ns 9904731, :gc-collections 1710, :gc-minor 1541, :gc-major 169, :gc-bytes-freed 1617037928, :gc-ns 2436860000, :gc-pct-tenths 246, :max-gc-ns 29193000, :suite "lazy: vs eager (mapv + rangev)"}
+{:label "C: range -> filter -> map -> take -> reduce", :iterations 1000, :total-ns 586592000, :mean-ns 586592, :gc-collections 116, :gc-minor 115, :gc-major 1, :gc-bytes-freed 119549007, :gc-ns 112701000, :gc-pct-tenths 192, :max-gc-ns 29193000, :suite "lazy: realistic pipeline"}
+{:label "mino: pure range -> filter -> map -> take -> reduce", :iterations 1000, :total-ns 1233451000, :mean-ns 1233451, :gc-collections 241, :gc-minor 237, :gc-major 4, :gc-bytes-freed 248073060, :gc-ns 197193000, :gc-pct-tenths 159, :max-gc-ns 29193000, :suite "lazy: realistic pipeline"}
+{:label "C: double pipeline", :iterations 500, :total-ns 1187791000, :mean-ns 2375582, :gc-collections 248, :gc-minor 237, :gc-major 11, :gc-bytes-freed 248870124, :gc-ns 223372000, :gc-pct-tenths 188, :max-gc-ns 29193000, :suite "lazy: realistic pipeline"}
+{:label "mino: pure double pipeline", :iterations 500, :total-ns 2649008000, :mean-ns 5298016, :gc-collections 497, :gc-minor 467, :gc-major 30, :gc-bytes-freed 490563054, :gc-ns 511226000, :gc-pct-tenths 192, :max-gc-ns 29193000, :suite "lazy: realistic pipeline"}
