@@ -197,24 +197,6 @@ int main(void)
         mino_state_free(dst);
     }
 
-    /* --- Mailbox --- */
-    printf("\nMailbox:\n");
-    {
-        mino_state_t *s2 = mino_state_new();
-        mino_mailbox_t *mb = mino_mailbox_new();
-        BENCH("mailbox: send+recv int", 10000, {
-            mino_mailbox_send(mb, S, mino_int(S, 42));
-            (void)mino_mailbox_recv(mb, s2);
-        });
-        BENCH("mailbox: send+recv 5-element vector", 1000, {
-            mino_val_t *v = mino_eval_string(S, "[1 2 3 4 5]", env);
-            mino_mailbox_send(mb, S, v);
-            (void)mino_mailbox_recv(mb, s2);
-        });
-        mino_mailbox_free(mb);
-        mino_state_free(s2);
-    }
-
     /* --- REPL handle --- */
     printf("\nREPL handle:\n");
     {
