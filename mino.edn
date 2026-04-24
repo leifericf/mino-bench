@@ -31,6 +31,14 @@
                    :deps [build]
                    :task mino.tasks.builtin/bench}
 
+  ;; Perf regression gate (small, stable subset)
+  perf-gate       {:doc  "Run the perf regression gate against the pinned baseline"
+                   :deps [build]
+                   :task mino.tasks.builtin/perf-gate}
+  perf-gate-record {:doc  "Re-record the perf baseline from the current build"
+                   :deps [build]
+                   :task mino.tasks.builtin/perf-gate-record}
+
   ;; Stress and fuzz
   stress          {:doc  "Run GC stress test"
                    :deps [build]

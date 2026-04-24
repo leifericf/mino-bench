@@ -1,0 +1,10 @@
+;; Perf gate baseline (min of 3 runs, mean-ns).
+;; Rewrite this file in the same commit as an intentional
+;; eval-floor change.
+{
+  "arith-inc" 656
+  "cons-create" 777
+  "fn-call-identity" 803
+  "let-local-lookup" 734
+  "vec3-create" 583
+}

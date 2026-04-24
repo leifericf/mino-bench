@@ -142,6 +142,24 @@
   []
   (println (sh! mino-bin "benchmarks/run_all.mino")))
 
+;; ---- Perf regression gate ----
+
+(defn perf-gate
+  "Run the perf regression gate against the pinned baseline. Exits non-zero
+   on regression so this is safe to wire into CI."
+  []
+  (let [r (sh mino-bin "benchmarks/perf_gate.mino")]
+    (println (:out r))
+    (exit (:exit r))))
+
+(defn perf-gate-record
+  "Re-record the perf baseline from the current build. Run this in the same
+   commit as an intentional eval-floor change."
+  []
+  (let [r (sh "env" "MINO_PERF_GATE_RECORD=1" mino-bin "benchmarks/perf_gate.mino")]
+    (println (:out r))
+    (exit (:exit r))))
+
 ;; ---- Stress tests ----
 
 (defn stress

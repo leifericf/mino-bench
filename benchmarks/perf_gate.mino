@@ -1,0 +1,161 @@
+;; Perf regression gate. Runs a small, stable subset of benches R times,
+;; takes the minimum mean-ns per bench (noise-resistant for fixed-cost
+;; micros), compares to a pinned baseline, and exits non-zero if any
+;; bench regressed beyond a configured threshold.
+;;
+;; Usage:
+;;   ./mino/mino benchmarks/perf_gate.mino                 [run + check]
+;;   MINO_PERF_GATE_RECORD=1 ./mino/mino .../perf_gate.mino [rewrite baseline]
+;;
+;; Baseline lives in baselines/perf_baseline.edn. When you intentionally
+;; change the eval floor (perf optimization or correctness fix with a
+;; known cost), re-record the baseline in the same commit so the gate
+;; tracks reality.
+
+(ns benchmarks.perf-gate)
+(require '[mino.bench :as bench])
+
+(def ^:private baseline-path "baselines/perf_baseline.edn")
+
+;; Thresholds (tenths of a percent).
+;; +15.0% over baseline fails; -30.0% under baseline also fails so the
+;; baseline gets refreshed in the same commit that earned the speedup.
+(def ^:private regress-tenths 150)
+(def ^:private speedup-tenths 300)
+
+;; Runs per bench. Gate reports the min.
+(def ^:private runs 3)
+
+;; Bench registry. Each entry: [id label iter body-fn]. Keep the set
+;; small; picks target the eval floor and allocation micros so that a
+;; regression in these surfaces quickly across the whole dialect.
+;; Adding or removing a bench requires re-recording the baseline.
+(def ^:private benches
+  [["fn-call-identity"
+    "identity fn call"
+    100000
+    (let [f (fn [x] x)]
+      (fn [] (f 42)))]
+   ["let-local-lookup"
+    "let binding + local lookup"
+    100000
+    (fn [] (let [x 42] x))]
+   ["arith-inc"
+    "inc on small int"
+    1000000
+    (fn [] (inc 41))]
+   ["cons-create"
+    "cons cell creation"
+    100000
+    (fn [] (cons 1 nil))]
+   ["vec3-create"
+    "small vector [1 2 3]"
+    100000
+    (fn [] [1 2 3])]])
+
+(defn- run-once [[id _ iter body-fn]]
+  (:mean-ns (bench/bench id iter body-fn)))
+
+(defn- min-mean-ns [entry]
+  (apply min (repeatedly runs #(run-once entry))))
+
+(defn- measure-all []
+  (into {} (mapv (fn [entry] [(first entry) (min-mean-ns entry)]) benches)))
+
+(defn- load-baseline []
+  (when (file-exists? baseline-path)
+    (read-string (slurp baseline-path))))
+
+(defn- format-ns [n]
+  (cond
+    (>= n 1000000) (str (quot n 1000000) "ms")
+    (>= n 1000)    (str (quot n 1000) "us")
+    :else          (str n "ns")))
+
+(defn- percent-tenths [baseline current]
+  (if (and baseline (pos? baseline))
+    (quot (* (- current baseline) 1000) baseline)
+    0))
+
+(defn- fmt-pct-tenths [t]
+  (let [sign (if (neg? t) "-" "+")
+        a    (if (neg? t) (- t) t)]
+    (str sign (quot a 10) "." (mod a 10) "%")))
+
+(defn- check [current baseline]
+  (mapv (fn [[id label _ _]]
+          (let [b (get baseline id)
+                c (get current id)
+                d (if (and b c) (percent-tenths b c) 0)
+                s (cond
+                    (nil? b)                   :no-baseline
+                    (nil? c)                   :no-measurement
+                    (> d regress-tenths)       :regressed
+                    (< d (- speedup-tenths))   :speedup
+                    :else                      :ok)]
+            {:id id :label label :baseline b :current c
+             :delta-tenths d :status s}))
+        benches))
+
+(defn- print-report [rows]
+  (println)
+  (println "perf-gate: bench vs baseline (+15.0% regression fails; -30.0% speedup fails to force baseline refresh)")
+  (doseq [r rows]
+    (let [mark (case (:status r)
+                 :ok             "OK    "
+                 :regressed      "FAIL  "
+                 :speedup        "FASTER"
+                 :no-baseline    "?BASE "
+                 :no-measurement "?MEAS ")
+          bs (if (:baseline r) (format-ns (:baseline r)) "-")
+          cs (if (:current r)  (format-ns (:current r))  "-")
+          ds (if (and (:baseline r) (:current r))
+               (fmt-pct-tenths (:delta-tenths r)) "-")]
+      (println (str "  " mark "  " (:label r)
+                    " (" (:id r) ")"
+                    ": baseline=" bs
+                    " current=" cs
+                    " delta=" ds))))
+  (println))
+
+(defn- record-baseline [current]
+  (let [sorted (sort-by first (seq current))
+        body   (apply str (mapv (fn [[k v]] (str "  " (pr-str k) " " v "\n")) sorted))]
+    (spit baseline-path
+          (str ";; Perf gate baseline (min of " runs " runs, mean-ns).\n"
+               ";; Rewrite this file in the same commit as an intentional\n"
+               ";; eval-floor change.\n"
+               "{\n" body "}\n"))
+    (println (str "perf-gate: baseline written to " baseline-path))))
+
+(defn- record-mode? []
+  (let [v (getenv "MINO_PERF_GATE_RECORD")]
+    (and v (not= v "") (not= v "0"))))
+
+(defn- print-hw-note []
+  (println (str "perf-gate: benches=" (count benches)
+                " runs-per-bench=" runs
+                " (measurements are CPU-sensitive; expect noise on loaded runners)")))
+
+(defn run []
+  (print-hw-note)
+  (let [current (measure-all)]
+    (if (record-mode?)
+      (do (record-baseline current)
+          (print-report (check current current))
+          (exit 0))
+      (let [baseline (load-baseline)]
+        (when (nil? baseline)
+          (println "perf-gate: no baseline present; set MINO_PERF_GATE_RECORD=1 to create one.")
+          (exit 2))
+        (let [rows   (check current baseline)
+              failed (filterv #(contains? #{:regressed :speedup :no-baseline :no-measurement}
+                                          (:status %))
+                              rows)]
+          (print-report rows)
+          (if (empty? failed)
+            (do (println "perf-gate: PASS") (exit 0))
+            (do (println (str "perf-gate: FAIL (" (count failed) " bench(es) outside threshold)"))
+                (exit 1))))))))
+
+(run)

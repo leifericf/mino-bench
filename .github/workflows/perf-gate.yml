@@ -1,0 +1,33 @@
+name: perf-gate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  perf-gate:
+    name: perf-gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Compiler version
+        run: cc --version
+
+      - name: Bootstrap mino
+        run: |
+          cd mino
+          printf 'static const char *core_mino_src =\n' > src/core_mino.h
+          sed 's/\\/\\\\/g; s/"/\\"/g; s/^/    "/; s/$/\\n"/' src/core.mino >> src/core_mino.h
+          printf '    ;\n' >> src/core_mino.h
+          cc -std=c99 -O2 -Isrc -o mino src/*.c main.c -lm
+
+      - name: Build bench binaries
+        run: ./mino/mino task build
+
+      - name: Run perf gate
+        run: ./mino/mino task perf-gate
