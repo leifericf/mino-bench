@@ -46,5 +46,10 @@
   stress-sharded  {:doc  "Run all GC stress shards"
                    :deps [build]
                    :task mino.tasks.builtin/stress-sharded}
-  fuzz-build      {:doc  "Build the fuzz reader binary"
-                   :task mino.tasks.builtin/fuzz-build}}}
+  fuzz-build      {:doc  "Build the fuzz reader binary (stdin mode)"
+                   :task mino.tasks.builtin/fuzz-build}
+  fuzz-build-libfuzzer {:doc  "Build libFuzzer-instrumented reader (requires clang + fuzzer sanitizer)"
+                   :task mino.tasks.builtin/fuzz-build-libfuzzer}
+  fuzz-smoke      {:doc  "Replay every corpus seed through the stdin-mode reader"
+                   :deps [fuzz-build]
+                   :task mino.tasks.builtin/fuzz-smoke}}}

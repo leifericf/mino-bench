@@ -14,10 +14,24 @@
   `perf-gate-record`, plus a GitHub Actions workflow that runs on every
   push and PR. mino's own CI also runs the gate against the current mino
   SHA.
+- Fuzz corpus expansion from 4 to 22 seed files covering character
+  literals, unicode, deep nesting, large / special numbers, metadata,
+  reader conditionals, regex literals, symbol / keyword edges, token
+  boundaries, syntax-quote forms, comments, mixed forms, whitespace
+  edges, string escapes, and four malformed families (unterminated
+  lists / strings / reader macros, stray reader-macro prefixes).
+- `fuzz-smoke` task replays every corpus seed through the stdin-mode
+  reader and fails on any crash. Runs on every push and PR via the new
+  `fuzz` workflow.
+- `fuzz-build-libfuzzer` task builds a clang libFuzzer + ASAN + UBSAN
+  target. The `fuzz` workflow's scheduled job runs it for 24 hours
+  nightly against the corpus and uploads any crash artifacts.
 
 ### Changed
 
 - Bumped mino submodule pin to v0.46.0.
+- `src/transient.c` added to the bundled mino source list so bench
+  binaries link against the transient C API shipped in mino v0.46.0.
 
 ## v0.1.0
 

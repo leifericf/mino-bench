@@ -188,3 +188,45 @@
                                 (mapv identity mino-srcs) libs))]
     (println (str "  " (str/join " " args)))
     (apply sh! args)))
+
+(defn fuzz-build-libfuzzer
+  "Build the libFuzzer-instrumented fuzz reader binary. Requires clang
+   with -fsanitize=fuzzer,address available. The output binary accepts
+   libFuzzer's -runs, -max_total_time, and corpus-directory arguments."
+  []
+  (gen-core-header)
+  (let [cc-fuzz (or (getenv "CC") "clang")
+        flags   ["-g" "-O1" "-std=c99" "-Wall" "-Wextra" "-Imino/src"
+                 "-fsanitize=fuzzer,address,undefined"
+                 "-fno-omit-frame-pointer"]
+        args    (into [cc-fuzz] (concat flags
+                                        ["-o" "fuzz/fuzz_reader_libfuzzer"
+                                         "fuzz/fuzz_reader.c"]
+                                        (mapv identity mino-srcs) libs))]
+    (println (str "  " (str/join " " args)))
+    (apply sh! args)))
+
+(defn fuzz-smoke
+  "Replay every corpus seed through the stdin-mode fuzz reader and
+   report ok/FAIL per file. Meant for CI: a seed that crashes the
+   reader is a regression even if the libFuzzer job is not running."
+  []
+  (gen-core-header)
+  ;; Build stdin-mode reader if missing.
+  (when (not (file-exists? "fuzz/fuzz_reader"))
+    (fuzz-build))
+  (let [listing (sh! "ls" "fuzz/corpus")
+        seeds   (sort (filterv (fn [s] (and (not= s "") (ends-with? s ".mino")))
+                               (split listing "\n")))
+        failed  (atom [])]
+    (doseq [seed seeds]
+      (let [path (str "fuzz/corpus/" seed)
+            r    (sh "sh" "-c" (str "./fuzz/fuzz_reader < " path))]
+        (if (= 0 (:exit r))
+          (println (str "  ok    " path))
+          (do (println (str "  FAIL  " path))
+              (swap! failed conj path)))))
+    (if (empty? @failed)
+      (println (str "fuzz-smoke: all " (count seeds) " seeds parsed without crashing."))
+      (do (println (str "fuzz-smoke: " (count @failed) " seed(s) crashed the reader."))
+          (exit 1)))))

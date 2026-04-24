@@ -1,0 +1,7 @@
+#"hello"
+#"[0-9]+"
+#"^(foo|bar)$"
+#"a\.b"
+#""
+#"\s+\S+\d+\D+\w+\W+"
+#"(?i)case-insensitive"

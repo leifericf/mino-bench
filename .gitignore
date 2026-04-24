@@ -26,3 +26,7 @@ Thumbs.db
 
 # Local working files
 .local/
+
+fuzz/fuzz_reader_asan
+fuzz/fuzz_reader_libfuzzer
+*.dSYM/

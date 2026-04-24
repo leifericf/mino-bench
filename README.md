@@ -25,7 +25,9 @@ cd mino && cc -std=c99 -O2 -Isrc -o mino src/*.c main.c -lm && cd ..
 
 ./mino/mino task stress          # GC stress test
 ./mino/mino task stress-sharded  # all GC stress shards
-./mino/mino task fuzz-build      # build fuzz reader
+./mino/mino task fuzz-build             # build stdin-mode fuzz reader
+./mino/mino task fuzz-build-libfuzzer   # build libFuzzer-instrumented reader (clang)
+./mino/mino task fuzz-smoke             # replay every corpus seed through the reader
 
 ./mino/mino task perf-gate         # run perf regression gate vs baseline (exit 1 on fail)
 ./mino/mino task perf-gate-record  # re-record baseline from current build
@@ -48,6 +50,28 @@ commit:
 ./mino/mino task perf-gate-record
 git add baselines/perf_baseline.edn
 git commit -m "..."
+```
+
+## Fuzzing
+
+The reader fuzz corpus lives under `fuzz/corpus/` and covers 22 seed
+categories: atoms, collections, nested forms, quotes, character
+literals, unicode strings, deep nesting, large numbers, special
+floats, metadata, reader conditionals, regex literals, symbol/keyword
+edge cases, token boundaries, syntax-quote forms, comments, mixed
+forms, whitespace edges, string escapes, and four malformed families
+(unterminated lists / strings / reader macros).
+
+`fuzz-smoke` replays every seed through the stdin-mode reader and
+fails on any crash. It runs on every push and PR.
+
+`fuzz-build-libfuzzer` builds a clang libFuzzer + ASAN + UBSAN target;
+the nightly `fuzz` workflow runs it for 24 hours against the corpus.
+Local use:
+
+```
+CC=clang ./mino/mino task fuzz-build-libfuzzer
+./fuzz/fuzz_reader_libfuzzer -max_total_time=60 -max_len=65536 fuzz/corpus
 ```
 
 ## License

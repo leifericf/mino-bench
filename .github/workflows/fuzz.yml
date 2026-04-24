@@ -1,0 +1,85 @@
+name: fuzz
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Nightly at 02:17 UTC — pick an off-peak time to avoid runner queue.
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+    inputs:
+      duration:
+        description: "libFuzzer -max_total_time (seconds). 3600 ~= smoke, 86400 ~= 24h."
+        required: false
+        default: "3600"
+
+jobs:
+  smoke:
+    name: corpus smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Bootstrap mino
+        run: |
+          cd mino
+          printf 'static const char *core_mino_src =\n' > src/core_mino.h
+          sed 's/\\/\\\\/g; s/"/\\"/g; s/^/    "/; s/$/\\n"/' src/core.mino >> src/core_mino.h
+          printf '    ;\n' >> src/core_mino.h
+          cc -std=c99 -O2 -Isrc -o mino src/*.c main.c -lm
+
+      - name: Corpus smoke (every seed through stdin reader)
+        run: ./mino/mino task fuzz-smoke
+
+  libfuzzer:
+    name: libFuzzer (${{ github.event_name == 'schedule' && '24h' || 'short' }})
+    runs-on: ubuntu-latest
+    # Only run the long fuzz job on schedule or explicit dispatch. Push
+    # and PR paths stop at the smoke job above so every commit gets
+    # fast signal without burning a full runner hour.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    timeout-minutes: 1500  # 25h -- covers the 24h scheduled run plus overhead
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install clang with fuzzer sanitizer
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang
+
+      - name: Bootstrap mino
+        run: |
+          cd mino
+          printf 'static const char *core_mino_src =\n' > src/core_mino.h
+          sed 's/\\/\\\\/g; s/"/\\"/g; s/^/    "/; s/$/\\n"/' src/core.mino >> src/core_mino.h
+          printf '    ;\n' >> src/core_mino.h
+          cc -std=c99 -O2 -Isrc -o mino src/*.c main.c -lm
+
+      - name: Build libFuzzer target
+        env:
+          CC: clang
+        run: ./mino/mino task fuzz-build-libfuzzer
+
+      - name: Run libFuzzer
+        run: |
+          DURATION="${{ github.event.inputs.duration || '86400' }}"
+          mkdir -p fuzz/artifacts
+          ./fuzz/fuzz_reader_libfuzzer \
+            -max_total_time=${DURATION} \
+            -max_len=65536 \
+            -print_final_stats=1 \
+            -artifact_prefix=fuzz/artifacts/ \
+            fuzz/corpus
+
+      - name: Upload crash artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: libfuzzer-artifacts
+          path: fuzz/artifacts/
+          if-no-files-found: ignore
