@@ -30,7 +30,7 @@
      "src/prim_stateful.c" "src/prim_module.c"
      "src/prim_fs.c" "src/prim_proc.c"
      "src/prim_host.c" "src/host_interop.c"
-     "src/clone.c" "src/re.c"
+     "src/clone.c" "src/re.c" "src/transient.c"
      "src/async_scheduler.c" "src/async_timer.c" "src/prim_async.c"]))
 
 (def ^:private mino-bin-srcs (conj mino-srcs "mino/main.c"))
