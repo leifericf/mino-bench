@@ -7,20 +7,30 @@
 (defn bench
   "Run body-fn for n iterations, return a result map with timing and GC data."
   [label n body-fn]
-  (let [gc-before  (gc-stats)
-        start      (nano-time)
-        _          (dotimes [_ n] (body-fn))
-        elapsed    (- (nano-time) start)
-        gc-after   (gc-stats)
-        gc-ns      (- (or (:total-gc-ns gc-after) 0)
-                      (or (:total-gc-ns gc-before) 0))
-        gc-pct     (if (pos? elapsed)
-                     (quot (* gc-ns 1000) elapsed)
-                     0)]
+  (let [gc-before    (gc-stats)
+        start        (nano-time)
+        _            (dotimes [_ n] (body-fn))
+        elapsed      (- (nano-time) start)
+        gc-after     (gc-stats)
+        gc-ns        (- (or (:total-gc-ns gc-after) 0)
+                        (or (:total-gc-ns gc-before) 0))
+        gc-pct       (if (pos? elapsed)
+                       (quot (* gc-ns 1000) elapsed)
+                       0)
+        ;; `:bytes-alloc` is reset by GC, so net delta-alloc misses bytes
+        ;; that were collected during the run. Add the collected bytes back
+        ;; to recover the true allocation total.
+        delta-alloc  (- (or (:bytes-alloc gc-after) 0)
+                        (or (:bytes-alloc gc-before) 0))
+        delta-freed  (- (or (:bytes-freed gc-after) 0)
+                        (or (:bytes-freed gc-before) 0))
+        alloc-bytes  (+ delta-alloc delta-freed)]
     {:label             label
      :iterations        n
      :total-ns          elapsed
      :mean-ns           (quot elapsed n)
+     :alloc-bytes       alloc-bytes
+     :alloc-bytes-per-op (if (pos? n) (quot alloc-bytes n) 0)
      :gc-collections    (- (gc-collections-total gc-after)
                            (gc-collections-total gc-before))
      :gc-minor          (- (or (:collections-minor gc-after) 0)
