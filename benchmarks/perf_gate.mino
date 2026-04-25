@@ -23,10 +23,14 @@
 (def ^:private baseline-path "baselines/perf_baseline.edn")
 
 ;; Tenths of a percent. Local: +15% regression / -30% speedup. CI runners
-;; (CI=true) widen regression to +30% to absorb noise. Speedup gate stays
-;; symmetric so an unintended -30% drop still forces a baseline refresh.
+;; (CI=true) widen regression to +50% to absorb runner-to-runner variance
+;; on shared GitHub-hosted hardware; the baseline is itself recorded on
+;; that hardware via the workflow_dispatch record path, so the +50% band
+;; is for noise on top of a same-class baseline, not for absorbing a
+;; different-hardware mismatch. Speedup gate stays symmetric so an
+;; unintended -30% drop still forces a baseline refresh.
 (def ^:private local-regress-tenths 150)
-(def ^:private ci-regress-tenths    300)
+(def ^:private ci-regress-tenths    500)
 (def ^:private speedup-tenths       300)
 
 ;; Allocation gate. Allocation counts are deterministic, so we hold this
