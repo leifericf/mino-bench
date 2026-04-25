@@ -6,7 +6,20 @@ Benchmarks, stress tests, and fuzz testing for [mino](https://github.com/leiferi
 
 ```
 git submodule update --init
-cd mino && cc -std=c99 -O2 -Isrc -o mino src/*.c main.c -lm && cd ..
+cd mino
+printf 'static const char *core_mino_src =\n' > src/core_mino.h
+sed 's/\\/\\\\/g; s/"/\\"/g; s/^/    "/; s/$/\\n"/' src/core.mino >> src/core_mino.h
+printf '    ;\n' >> src/core_mino.h
+cc -std=c99 -O2 \
+  -Isrc -Isrc/public -Isrc/runtime -Isrc/gc -Isrc/eval \
+  -Isrc/collections -Isrc/prim -Isrc/async -Isrc/interop \
+  -Isrc/diag -Isrc/vendor/imath \
+  -o mino \
+  src/public/*.c src/runtime/*.c src/gc/*.c src/eval/*.c \
+  src/collections/*.c src/prim/*.c src/async/*.c src/interop/*.c \
+  src/regex/*.c src/diag/*.c src/vendor/imath/*.c \
+  main.c -lm
+cd ..
 ```
 
 ## Tasks
