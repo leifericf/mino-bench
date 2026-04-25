@@ -1,10 +1,21 @@
-;; Perf gate baseline (min of 3 runs, mean-ns).
+;; Perf gate baseline (min of 3 runs).
+;; :ns is mean-ns/op; :bytes is allocation bytes/op.
 ;; Rewrite this file in the same commit as an intentional
-;; eval-floor change.
+;; eval-floor or allocation-shape change.
 {
-  "arith-inc" 656
-  "cons-create" 777
-  "fn-call-identity" 803
-  "let-local-lookup" 734
-  "vec3-create" 583
+  "arith-add" {:ns 833 :bytes 496}
+  "arith-inc" {:ns 733 :bytes 432}
+  "assoc-small" {:ns 1420 :bytes 1008}
+  "cons-create" {:ns 893 :bytes 560}
+  "count-vec3" {:ns 774 :bytes 432}
+  "do-block" {:ns 603 :bytes 368}
+  "fn-call-identity" {:ns 816 :bytes 544}
+  "if-branch" {:ns 591 :bytes 368}
+  "let-local-lookup" {:ns 735 :bytes 480}
+  "loop-recur-5" {:ns 3036 :bytes 2224}
+  "re-find-simple" {:ns 1073 :bytes 564}
+  "read-int" {:ns 797 :bytes 432}
+  "read-list" {:ns 1081 :bytes 688}
+  "small-map" {:ns 669 :bytes 368}
+  "vec3-create" {:ns 658 :bytes 368}
 }
