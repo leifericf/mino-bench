@@ -1,5 +1,13 @@
 ;; Bootstrap (first time only):
-;;   cd mino && cc -std=c99 -O2 -Isrc -o mino src/*.c main.c -lm && cd ..
+;;   cd mino && cc -std=c99 -O2 \
+;;     -Isrc -Isrc/public -Isrc/runtime -Isrc/gc -Isrc/eval \
+;;     -Isrc/collections -Isrc/prim -Isrc/async -Isrc/interop \
+;;     -Isrc/regex -Isrc/diag -Isrc/vendor/imath \
+;;     -o mino \
+;;     src/public/*.c src/runtime/*.c src/gc/*.c src/eval/*.c \
+;;     src/collections/*.c src/prim/*.c src/async/*.c src/interop/*.c \
+;;     src/regex/*.c src/diag/*.c src/vendor/imath/*.c \
+;;     main.c -lm && cd ..
 ;; Then: ./mino/mino task build, ./mino/mino task bench, etc.
 
 {:paths ["lib" "mino/lib" "mino"]
