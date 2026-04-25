@@ -6,6 +6,8 @@
  * Not part of the smoke suite; not run by CI. Invoke via `make bench-map`.
  */
 
+#define _POSIX_C_SOURCE 200809L
+
 #include "mino.h"
 
 #include <stdio.h>

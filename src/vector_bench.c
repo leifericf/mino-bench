@@ -11,6 +11,8 @@
  * suite; not run by CI. Invoke via `make bench`.
  */
 
+#define _POSIX_C_SOURCE 200809L
+
 #include "mino.h"
 
 #include <stdio.h>
