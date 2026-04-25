@@ -50,14 +50,32 @@ cd ..
 
 `benchmarks/perf_gate.mino` runs a small, stable subset of micro-benches and
 compares each measurement to `baselines/perf_baseline.edn`. The gate fails
-(exit 1) if any bench is outside the configured threshold (+15% regression
-or -30% speedup; a detected speedup is treated as a failure so the baseline
-gets refreshed in the same commit that earned the win). mino's CI runs the
-gate against the current mino SHA on every push and PR.
+(exit 1) if any bench is outside the configured threshold (local: +15%
+regression / -30% speedup; CI: +50% regression / -30% speedup; a detected
+speedup is treated as a failure so the baseline gets refreshed in the same
+commit that earned the win). mino's CI runs the gate against the current
+mino SHA on every push and PR.
+
+The committed baseline is recorded on `ubuntu-22.04` GitHub-hosted runners,
+which is the same hardware class the gate runs on. Local runs on developer
+machines will typically show large `:speedup` deltas against this baseline,
+because developer hardware is faster than the shared GH runners; this is
+expected and not a regression. Only re-record the baseline from a CI run
+unless you explicitly want a local-grounded baseline for ad-hoc work.
+
+To re-record the CI-grounded baseline, trigger the perf-gate workflow with
+`record=true`:
+
+```
+gh workflow run perf-gate.yml -f record=true
+gh run download <run-id> -n perf_baseline
+git add baselines/perf_baseline.edn
+git commit -m "..."
+```
 
 When you intentionally change the eval floor (a perf optimization or a
 correctness fix with a known cost), record a new baseline in the same
-commit:
+commit; for local-only iteration there is also a host-side recorder:
 
 ```
 ./mino/mino task perf-gate-record
