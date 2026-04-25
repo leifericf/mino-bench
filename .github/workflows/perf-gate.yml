@@ -5,11 +5,17 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      record:
+        description: "Record a fresh baseline instead of running the gate"
+        type: boolean
+        default: false
 
 jobs:
   perf-gate:
     name: perf-gate
-    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'workflow_dispatch' || !inputs.record }}
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
         with:
@@ -39,3 +45,47 @@ jobs:
 
       - name: Run perf gate
         run: ./mino/mino task perf-gate
+
+  record-baseline:
+    name: record baseline
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.record }}
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Compiler version
+        run: cc --version
+
+      - name: Bootstrap mino
+        run: |
+          cd mino
+          printf 'static const char *core_mino_src =\n' > src/core_mino.h
+          sed 's/\\/\\\\/g; s/"/\\"/g; s/^/    "/; s/$/\\n"/' src/core.mino >> src/core_mino.h
+          printf '    ;\n' >> src/core_mino.h
+          cc -std=c99 -O2 \
+            -Isrc -Isrc/public -Isrc/runtime -Isrc/gc -Isrc/eval \
+            -Isrc/collections -Isrc/prim -Isrc/async -Isrc/interop \
+            -Isrc/diag -Isrc/vendor/imath \
+            -o mino \
+            src/public/*.c src/runtime/*.c src/gc/*.c src/eval/*.c \
+            src/collections/*.c src/prim/*.c src/async/*.c src/interop/*.c \
+            src/regex/*.c src/diag/*.c src/vendor/imath/*.c \
+            main.c -lm
+
+      - name: Build bench binaries
+        run: ./mino/mino task build
+
+      - name: Record baseline
+        env:
+          MINO_PERF_GATE_RECORD: "1"
+        run: ./mino/mino task perf-gate
+
+      - name: Upload baseline artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf_baseline
+          path: baselines/perf_baseline.edn
+          if-no-files-found: error
+          retention-days: 7
