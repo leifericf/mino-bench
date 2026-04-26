@@ -5,17 +5,17 @@
 (def ^:private mino-bin "mino/mino")
 
 (def ^:private bench-files
-  ["benchmarks/cons_bench.mino"
-   "benchmarks/vec_bench.mino"
-   "benchmarks/map_bench.mino"
-   "benchmarks/intern_bench.mino"
-   "benchmarks/eval_bench.mino"
-   "benchmarks/micro_bench.mino"
-   "benchmarks/realistic_bench.mino"
-   "benchmarks/async_bench.mino"
-   "benchmarks/actor_bench.mino"
-   "benchmarks/lazy_bench.mino"
-   "benchmarks/bot_fleet_bench.mino"])
+  ["benchmarks/cons_bench.clj"
+   "benchmarks/vec_bench.clj"
+   "benchmarks/map_bench.clj"
+   "benchmarks/intern_bench.clj"
+   "benchmarks/eval_bench.clj"
+   "benchmarks/micro_bench.clj"
+   "benchmarks/realistic_bench.clj"
+   "benchmarks/async_bench.clj"
+   "benchmarks/actor_bench.clj"
+   "benchmarks/lazy_bench.clj"
+   "benchmarks/bot_fleet_bench.clj"])
 
 (defn- extract-edn-lines
   "Extract lines prefixed with ;edn; from output, return as vector of strings."

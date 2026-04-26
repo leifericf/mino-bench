@@ -4,8 +4,8 @@
 ;; beyond a configured threshold.
 ;;
 ;; Usage:
-;;   ./mino/mino benchmarks/perf_gate.mino                 [run + check]
-;;   MINO_PERF_GATE_RECORD=1 ./mino/mino .../perf_gate.mino [rewrite baseline]
+;;   ./mino/mino benchmarks/perf_gate.clj                 [run + check]
+;;   MINO_PERF_GATE_RECORD=1 ./mino/mino .../perf_gate.clj [rewrite baseline]
 ;;
 ;; Baseline lives in baselines/perf_baseline.edn. When you intentionally
 ;; change the eval floor (perf optimization or correctness fix with a

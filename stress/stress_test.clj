@@ -1,4 +1,4 @@
-;; stress_test.mino -- exploratory stress tests
+;; stress_test.clj -- exploratory stress tests
 ;; Targets: GC correctness, eval edge cases, data structure integrity,
 ;; lazy sequences, macros, error handling, tail calls.
 

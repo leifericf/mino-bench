@@ -50,8 +50,8 @@
 ;; ---- gen-core-header (needed before compiling mino/src/prim.c) ----
 
 (defn- gen-core-header []
-  (when (stale? ["mino/src/core.mino"] "mino/src/core_mino.h")
-    (let [src     (slurp "mino/src/core.mino")
+  (when (stale? ["mino/src/core.clj"] "mino/src/core_mino.h")
+    (let [src     (slurp "mino/src/core.clj")
           src     (if (ends-with? src "\n")
                     (subs src 0 (- (count src) 1))
                     src)
@@ -132,7 +132,7 @@
 (defn bench
   "Run all mino-level benchmarks."
   []
-  (println (sh! mino-bin "benchmarks/run_all.mino")))
+  (println (sh! mino-bin "benchmarks/run_all.clj")))
 
 ;; ---- Perf regression gate ----
 
@@ -140,7 +140,7 @@
   "Run the perf regression gate against the pinned baseline. Exits non-zero
    on regression so this is safe to wire into CI."
   []
-  (let [r (sh mino-bin "benchmarks/perf_gate.mino")]
+  (let [r (sh mino-bin "benchmarks/perf_gate.clj")]
     (println (:out r))
     (exit (:exit r))))
 
@@ -148,7 +148,7 @@
   "Re-record the perf baseline from the current build. Run this in the same
    commit as an intentional eval-floor change."
   []
-  (let [r (sh "env" "MINO_PERF_GATE_RECORD=1" mino-bin "benchmarks/perf_gate.mino")]
+  (let [r (sh "env" "MINO_PERF_GATE_RECORD=1" mino-bin "benchmarks/perf_gate.clj")]
     (println (:out r))
     (exit (:exit r))))
 
@@ -157,13 +157,13 @@
 (defn stress
   "Run GC stress test."
   []
-  (println (sh! "env" "MINO_GC_STRESS=1" mino-bin "stress/stress_test.mino")))
+  (println (sh! "env" "MINO_GC_STRESS=1" mino-bin "stress/stress_test.clj")))
 
 (defn stress-sharded
   "Run all GC stress shards."
   []
   (doseq [i (range 1 12)]
-    (let [shard (str "stress/run_gc_shard" i ".mino")]
+    (let [shard (str "stress/run_gc_shard" i ".clj")]
       (print (str "  shard " i "/11... "))
       (flush)
       (println (sh! "env" "MINO_GC_STRESS=1" mino-bin shard)))))
@@ -208,7 +208,7 @@
   (when (not (file-exists? "fuzz/fuzz_reader"))
     (fuzz-build))
   (let [listing (sh! "ls" "fuzz/corpus")
-        seeds   (sort (filterv (fn [s] (and (not= s "") (ends-with? s ".mino")))
+        seeds   (sort (filterv (fn [s] (and (not= s "") (ends-with? s ".clj")))
                                (split listing "\n")))
         failed  (atom [])]
     (doseq [seed seeds]

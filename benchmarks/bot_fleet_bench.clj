@@ -66,7 +66,7 @@
   ;; One-shot fleet spawn. Forces a full GC first so the measurement
   ;; isn't contaminated by prior fleet accumulation, then reports total
   ;; ns and per-bot ns. Emits an EDN line in the same shape as
-  ;; mino.bench/run-suite so run_all.mino picks it up unchanged.
+  ;; mino.bench/run-suite so run_all.clj picks it up unchanged.
   (gc!)
   (let [gc-before (gc-stats)
         start     (nano-time)

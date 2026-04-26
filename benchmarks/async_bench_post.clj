@@ -2,7 +2,7 @@
 (require '[mino.bench :as bench])
 (require "core/async")
 
-;; Post-migration bench: same structure as async_bench.mino, but with
+;; Post-migration bench: same structure as async_bench.clj, but with
 ;; iteration counts reduced ~10x so the pure-mino implementation
 ;; finishes in minutes rather than hours. For apples-to-apples
 ;; comparison divide the baseline numbers by 10x where iteration counts

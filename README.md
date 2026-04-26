@@ -8,7 +8,7 @@ Benchmarks, stress tests, and fuzz testing for [mino](https://github.com/leiferi
 git submodule update --init
 cd mino
 printf 'static const char *core_mino_src =\n' > src/core_mino.h
-sed 's/\\/\\\\/g; s/"/\\"/g; s/^/    "/; s/$/\\n"/' src/core.mino >> src/core_mino.h
+sed 's/\\/\\\\/g; s/"/\\"/g; s/^/    "/; s/$/\\n"/' src/core.clj >> src/core_mino.h
 printf '    ;\n' >> src/core_mino.h
 cc -std=c99 -O2 \
   -Isrc -Isrc/public -Isrc/runtime -Isrc/gc -Isrc/eval \
@@ -48,7 +48,7 @@ cd ..
 
 ## Perf regression gate
 
-`benchmarks/perf_gate.mino` runs a small, stable subset of micro-benches and
+`benchmarks/perf_gate.clj` runs a small, stable subset of micro-benches and
 compares each measurement to `baselines/perf_baseline.edn`. The gate fails
 (exit 1) if any bench is outside the configured threshold (local: +15%
 regression / -30% speedup; CI: +50% regression / -30% speedup; a detected
