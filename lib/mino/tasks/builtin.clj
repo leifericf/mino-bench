@@ -10,12 +10,12 @@
        " -Imino/src/eval -Imino/src/collections -Imino/src/prim"
        " -Imino/src/async -Imino/src/interop"
        " -Imino/src/diag -Imino/src/vendor/imath"))
-(def ^:private cflags  (split (or (getenv "CFLAGS")
+(def ^:private cflags  (str/split (or (getenv "CFLAGS")
                                   (str "-std=c99 -Wall -Wpedantic -Wextra -O2 "
                                        include-flags)) " "))
 (def ^:private ldflags (let [v (or (getenv "LDFLAGS") "")]
-                         (if (= v "") [] (split v " "))))
-(def ^:private libs    (split (or (getenv "LIBS") "-lm") " "))
+                         (if (= v "") [] (str/split v " "))))
+(def ^:private libs    (str/split (or (getenv "LIBS") "-lm") " "))
 
 (def ^:private mino-bin "mino/mino")
 
@@ -23,7 +23,7 @@
 ;; task-load time. Matches whatever the pinned submodule SHA carries
 ;; without requiring this list to be edited when the C tree moves.
 (def ^:private mino-srcs
-  (vec (filter #(ends-with? % ".c") (file-seq "mino/src"))))
+  (vec (filter #(str/ends-with? % ".c") (file-seq "mino/src"))))
 
 (def ^:private mino-bin-srcs (conj mino-srcs "mino/main.c"))
 
@@ -52,7 +52,7 @@
 (defn- gen-core-header []
   (when (stale? ["mino/src/core.clj"] "mino/src/core_mino.h")
     (let [src     (slurp "mino/src/core.clj")
-          src     (if (ends-with? src "\n")
+          src     (if (str/ends-with? src "\n")
                     (subs src 0 (- (count src) 1))
                     src)
           escaped (-> src
@@ -208,8 +208,8 @@
   (when (not (file-exists? "fuzz/fuzz_reader"))
     (fuzz-build))
   (let [listing (sh! "ls" "fuzz/corpus")
-        seeds   (sort (filterv (fn [s] (and (not= s "") (ends-with? s ".clj")))
-                               (split listing "\n")))
+        seeds   (sort (filterv (fn [s] (and (not= s "") (str/ends-with? s ".clj")))
+                               (str/split listing "\n")))
         failed  (atom [])]
     (doseq [seed seeds]
       (let [path (str "fuzz/corpus/" seed)
