@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- Tracking mino v0.74.0 (deferred core surface): `*ns*` is interned as
+  a real dynamic var, `bound-fn` / `bound-fn*` capture and replay
+  dynamic bindings, `read` accepts an opts map, `clojure.edn/read`
+  forces `:read-cond :preserve`, `destructure` surfaces the C-side
+  destructuring as a function, and the bundled regex engine grows
+  capture groups with `re-matcher` and `re-groups`. The bench suite
+  builds and runs against the refreshed submodule.
+- Tracking mino v0.73.0 (first-class namespaces): each namespace owns
+  its own root binding table, `clojure.core` is the bundled-core
+  namespace, vars are first-class objects, auto-resolved keywords and
+  namespaced map literals land at read time, and source files use
+  `.clj` instead of `.mino`. The bench suite swaps to `.clj` source
+  files alongside the migration.
+
 ### Added
 
 - Perf regression gate: `benchmarks/perf_gate.mino` runs a small, stable
