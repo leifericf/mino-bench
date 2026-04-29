@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Tracking mino v0.96.8 (Canon-Parity cycle: real `MINO_VOLATILE`
+  primitive, stateful-transducer rewrites, lazy-seq recur-on-skip,
+  transient reductions, comp/partial/some-fn/every-pred unrolling
+  plus `into` 0/1-arg and `unchecked-divide-int`, `iteration` from
+  Clojure 1.11, `clojure.core.async` namespace wrap with `merge`/`into`
+  renames, the `:refer :all` transitive-drag fix, and the chunked-seq
+  family with two new value types and eight primitives). A fresh
+  bench run is queued so phase-level wins (volatile in stateful
+  transducers, recur-on-skip in lazy combinators, transients in
+  `frequencies`/`group-by`, chunked seqs in explicit pipelines) can
+  be measured against the pre-cycle baseline.
 - Tracking mino v0.74.0 (deferred core surface): `*ns*` is interned as
   a real dynamic var, `bound-fn` / `bound-fn*` capture and replay
   dynamic bindings, `read` accepts an opts map, `clojure.edn/read`
