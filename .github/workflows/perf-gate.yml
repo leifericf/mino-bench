@@ -60,6 +60,9 @@ jobs:
           gen_header lib/clojure/test/check/generators.clj lib_clojure_test_check_generators
           gen_header lib/clojure/test/check/properties.clj lib_clojure_test_check_properties
           gen_header lib/clojure/test/check.clj            lib_clojure_test_check
+          gen_header lib/mino/deps.clj                     lib_mino_deps
+          gen_header lib/mino/tasks.clj                    lib_mino_tasks
+          gen_header lib/mino/tasks/builtin.clj            lib_mino_tasks_builtin
           cc -std=c99 -O2 \
             -Isrc -Isrc/public -Isrc/runtime -Isrc/gc -Isrc/eval \
             -Isrc/collections -Isrc/prim -Isrc/async -Isrc/interop \
@@ -119,6 +122,9 @@ jobs:
           gen_header lib/clojure/test/check/generators.clj lib_clojure_test_check_generators
           gen_header lib/clojure/test/check/properties.clj lib_clojure_test_check_properties
           gen_header lib/clojure/test/check.clj            lib_clojure_test_check
+          gen_header lib/mino/deps.clj                     lib_mino_deps
+          gen_header lib/mino/tasks.clj                    lib_mino_tasks
+          gen_header lib/mino/tasks/builtin.clj            lib_mino_tasks_builtin
           cc -std=c99 -O2 \
             -Isrc -Isrc/public -Isrc/runtime -Isrc/gc -Isrc/eval \
             -Isrc/collections -Isrc/prim -Isrc/async -Isrc/interop \
