@@ -2,6 +2,30 @@
 
 ## Unreleased
 
+- Tracking mino v0.98.5 (Hygiene + Closure cycle: macro hygiene fix
+  in `qq_qualify_symbol` so syntax-quoted bare symbols inside a
+  macro body qualify against the macro's defining namespace not the
+  consumer's `*ns*` (closes the silent
+  `with-out-str`-after-`:refer :all` miscompile and the
+  `unbound symbol: chan*` failure for `(a/go ...)` called from
+  outside `clojure.core.async`); `compare` gains the canon
+  cross-type total order
+  `nil < false < true < numbers < strings < symbols < keywords`;
+  `clojure.string/split` gains the 3-arg `limit` arity; vector seqs
+  and lazy `range` auto-chunk into 32-element chunks so
+  `(chunked-seq? (seq [1 2 3]))` is `true` and
+  `(reduce + (map inc (filter odd? (range 1e6))))`-style pipelines
+  run end-to-end chunked; `array-map` insertion-order semantics
+  verified to already match canon; `random-seed!` primitive plus a
+  minimal `clojure.test.check` port (generators, properties,
+  `quick-check`; shrinking deferred) backing
+  `clojure.spec.alpha/gen` and `clojure.spec.alpha/exercise`). The
+  bench-side fork of `mino.tasks.builtin` realigns to upstream's
+  3-tuple `bundled-stdlib` schema and grows the three new
+  `lib_clojure_test_check*` entries so a clean checkout build
+  generates the right headers; the bootstrap recipe in `mino.edn`
+  is replaced by `cd mino && make && cd ..`, which delegates to
+  the submodule's Makefile.
 - Tracking mino v0.97.5 (Kwargs + Audit + Hygiene cycle: kwargs
   destructuring matches Clojure 1.11 (inline pairs, trailing map,
   mixed; `:or` defaults eval correctly inside the C-level binder);
