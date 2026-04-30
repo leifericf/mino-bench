@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- Tracking mino v0.97.5 (Kwargs + Audit + Hygiene cycle: kwargs
+  destructuring matches Clojure 1.11 (inline pairs, trailing map,
+  mixed; `:or` defaults eval correctly inside the C-level binder);
+  `iteration` rewritten to canon `& {:keys [...]}` shape; `sort-by`
+  and `reductions` gain multi-arity; `src/core.clj` 80-char wrap
+  with no behavioral churn; `defn` lifts to top-of-file so six
+  bootstrap `def + fn` forms become regular `defn`;
+  `clojure.core.async` gains canon `reduce` / `transduce` / `split`
+  / `partition-by` and excludes them from `clojure.core`; and
+  `clojure.spec.alpha` gains `abbrev` / `describe`). The bench
+  build task now also generates the `lib_<ns>.h` headers that
+  `install_stdlib.c` includes, and the three `str-replace` calls in
+  the local fork of the bundled task are qualified to `str/replace`
+  — both pre-existing latent issues in the bench-side fork that
+  surfaced once `core.clj` changed enough to retire stale headers.
 - Tracking mino v0.96.8 (Canon-Parity cycle: real `MINO_VOLATILE`
   primitive, stateful-transducer rewrites, lazy-seq recur-on-skip,
   transient reductions, comp/partial/some-fn/every-pred unrolling
