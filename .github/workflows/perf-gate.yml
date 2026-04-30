@@ -55,8 +55,11 @@ jobs:
           gen_header lib/clojure/datafy.clj           lib_clojure_datafy
           gen_header lib/clojure/core/protocols.clj   lib_clojure_core_protocols
           gen_header lib/clojure/instant.clj          lib_clojure_instant
-          gen_header lib/clojure/spec/alpha.clj       lib_clojure_spec_alpha
-          gen_header lib/clojure/core/specs/alpha.clj lib_clojure_core_specs_alpha
+          gen_header lib/clojure/spec/alpha.clj            lib_clojure_spec_alpha
+          gen_header lib/clojure/core/specs/alpha.clj      lib_clojure_core_specs_alpha
+          gen_header lib/clojure/test/check/generators.clj lib_clojure_test_check_generators
+          gen_header lib/clojure/test/check/properties.clj lib_clojure_test_check_properties
+          gen_header lib/clojure/test/check.clj            lib_clojure_test_check
           cc -std=c99 -O2 \
             -Isrc -Isrc/public -Isrc/runtime -Isrc/gc -Isrc/eval \
             -Isrc/collections -Isrc/prim -Isrc/async -Isrc/interop \
@@ -111,8 +114,11 @@ jobs:
           gen_header lib/clojure/datafy.clj           lib_clojure_datafy
           gen_header lib/clojure/core/protocols.clj   lib_clojure_core_protocols
           gen_header lib/clojure/instant.clj          lib_clojure_instant
-          gen_header lib/clojure/spec/alpha.clj       lib_clojure_spec_alpha
-          gen_header lib/clojure/core/specs/alpha.clj lib_clojure_core_specs_alpha
+          gen_header lib/clojure/spec/alpha.clj            lib_clojure_spec_alpha
+          gen_header lib/clojure/core/specs/alpha.clj      lib_clojure_core_specs_alpha
+          gen_header lib/clojure/test/check/generators.clj lib_clojure_test_check_generators
+          gen_header lib/clojure/test/check/properties.clj lib_clojure_test_check_properties
+          gen_header lib/clojure/test/check.clj            lib_clojure_test_check
           cc -std=c99 -O2 \
             -Isrc -Isrc/public -Isrc/runtime -Isrc/gc -Isrc/eval \
             -Isrc/collections -Isrc/prim -Isrc/async -Isrc/interop \
