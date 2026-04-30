@@ -1,14 +1,14 @@
 ;; Bootstrap (first time only):
-;;   cd mino && cc -std=c99 -O2 \
-;;     -Isrc -Isrc/public -Isrc/runtime -Isrc/gc -Isrc/eval \
-;;     -Isrc/collections -Isrc/prim -Isrc/async -Isrc/interop \
-;;     -Isrc/diag -Isrc/vendor/imath \
-;;     -o mino \
-;;     src/public/*.c src/runtime/*.c src/gc/*.c src/eval/*.c \
-;;     src/collections/*.c src/prim/*.c src/async/*.c src/interop/*.c \
-;;     src/regex/*.c src/diag/*.c src/vendor/imath/*.c \
-;;     main.c -lm && cd ..
-;; Then: ./mino/mino task build, ./mino/mino task bench, etc.
+;;   cd mino && make && cd ..
+;;
+;; The submodule's Makefile generates the bundled-source headers
+;; (src/core_mino.h + src/lib_*.h) and links the mino binary in one
+;; step. After bootstrap, every subsequent build goes through this
+;; file: `./mino/mino task build` does the incremental work.
+;;
+;; A bare `cc src/*.c main.c -lm` will not work — the bundled-source
+;; headers are generated artifacts and `make` is the smallest recipe
+;; that produces them.
 
 {:paths ["lib" "mino/lib" "mino"]
  :tasks

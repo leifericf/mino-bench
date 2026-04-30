@@ -1,5 +1,20 @@
 (ns mino.tasks.builtin)
 
+;; mino-bench's local task runner. This file shadows the bundled
+;; mino.tasks.builtin namespace because:
+;;   - tasks here run from the mino-bench/ working directory and
+;;     resolve sources via the mino/ submodule prefix;
+;;   - mino-bench needs bench-/fuzz-/stress-only tasks
+;;     (bench-c-vec, perf-gate, fuzz-build, stress-sharded, etc.)
+;;     that don't belong in the upstream task table.
+;;
+;; The shape of bundled-stdlib is kept in lockstep with upstream's
+;; mino/lib/mino/tasks/builtin.clj so that future mino releases
+;; that thread additional fields through stay drop-in compatible.
+;;
+;; First-time bootstrap: `cd mino && make && cd ..`. After that,
+;; every rebuild goes through `./mino/mino task build`.
+
 (require '[clojure.string :as str])
 
 ;; Build configuration
@@ -69,29 +84,36 @@
                  body "\\n\"\n    ;\n")))
     (println "  gen-core-header: mino/src/core_mino.h updated")))
 
+;; Schema parity with upstream's bundled-stdlib in
+;; mino/lib/mino/tasks/builtin.clj — `[src-path ns-name c-symbol]`.
+;; mino-bench keeps its own copy (and its own gen-stdlib-headers
+;; helper) because tasks here run from the mino-bench/ working
+;; directory and need to find sources via the mino/ submodule prefix.
+;; ns-name is unused locally but kept so future upstream evolutions
+;; that thread it through stay drop-in compatible.
 (def ^:private bundled-stdlib
-  [["lib/clojure/string.clj"           "lib_clojure_string"]
-   ["lib/clojure/set.clj"              "lib_clojure_set"]
-   ["lib/clojure/walk.clj"             "lib_clojure_walk"]
-   ["lib/clojure/edn.clj"              "lib_clojure_edn"]
-   ["lib/clojure/pprint.clj"           "lib_clojure_pprint"]
-   ["lib/clojure/zip.clj"              "lib_clojure_zip"]
-   ["lib/clojure/data.clj"             "lib_clojure_data"]
-   ["lib/clojure/test.clj"             "lib_clojure_test"]
-   ["lib/clojure/template.clj"         "lib_clojure_template"]
-   ["lib/clojure/repl.clj"             "lib_clojure_repl"]
-   ["lib/clojure/stacktrace.clj"       "lib_clojure_stacktrace"]
-   ["lib/clojure/datafy.clj"           "lib_clojure_datafy"]
-   ["lib/clojure/core/protocols.clj"   "lib_clojure_core_protocols"]
-   ["lib/clojure/instant.clj"          "lib_clojure_instant"]
-   ["lib/clojure/spec/alpha.clj"       "lib_clojure_spec_alpha"]
-   ["lib/clojure/core/specs/alpha.clj" "lib_clojure_core_specs_alpha"]
-   ["lib/mino/deps.clj"                "lib_mino_deps"]
-   ["lib/mino/tasks.clj"               "lib_mino_tasks"]
-   ["lib/mino/tasks/builtin.clj"       "lib_mino_tasks_builtin"]])
+  [["lib/clojure/string.clj"           "clojure.string"           "lib_clojure_string"]
+   ["lib/clojure/set.clj"              "clojure.set"              "lib_clojure_set"]
+   ["lib/clojure/walk.clj"             "clojure.walk"             "lib_clojure_walk"]
+   ["lib/clojure/edn.clj"              "clojure.edn"              "lib_clojure_edn"]
+   ["lib/clojure/pprint.clj"           "clojure.pprint"           "lib_clojure_pprint"]
+   ["lib/clojure/zip.clj"              "clojure.zip"              "lib_clojure_zip"]
+   ["lib/clojure/data.clj"             "clojure.data"             "lib_clojure_data"]
+   ["lib/clojure/test.clj"             "clojure.test"             "lib_clojure_test"]
+   ["lib/clojure/template.clj"         "clojure.template"         "lib_clojure_template"]
+   ["lib/clojure/repl.clj"             "clojure.repl"             "lib_clojure_repl"]
+   ["lib/clojure/stacktrace.clj"       "clojure.stacktrace"       "lib_clojure_stacktrace"]
+   ["lib/clojure/datafy.clj"           "clojure.datafy"           "lib_clojure_datafy"]
+   ["lib/clojure/core/protocols.clj"   "clojure.core.protocols"   "lib_clojure_core_protocols"]
+   ["lib/clojure/instant.clj"          "clojure.instant"          "lib_clojure_instant"]
+   ["lib/clojure/spec/alpha.clj"       "clojure.spec.alpha"       "lib_clojure_spec_alpha"]
+   ["lib/clojure/core/specs/alpha.clj" "clojure.core.specs.alpha" "lib_clojure_core_specs_alpha"]
+   ["lib/mino/deps.clj"                "mino.deps"                "lib_mino_deps"]
+   ["lib/mino/tasks.clj"               "mino.tasks"               "lib_mino_tasks"]
+   ["lib/mino/tasks/builtin.clj"       "mino.tasks.builtin"       "lib_mino_tasks_builtin"]])
 
 (defn- gen-stdlib-headers []
-  (doseq [[src-path c-symbol] bundled-stdlib]
+  (doseq [[src-path _ns-name c-symbol] bundled-stdlib]
     (let [src-full (str "mino/" src-path)
           out-path (str "mino/src/" c-symbol ".h")]
       (when (stale? [src-full] out-path)
@@ -141,8 +163,11 @@
   (doseq [src mino-bin-srcs]
     (let [obj (src->obj src)]
       (when (file-exists? obj) (rm-rf obj))))
-  ;; Generated header inside submodule
+  ;; Generated headers inside submodule (core + bundled stdlib)
   (when (file-exists? "mino/src/core_mino.h") (rm-rf "mino/src/core_mino.h"))
+  (doseq [[_ _ c-symbol] bundled-stdlib]
+    (let [hpath (str "mino/src/" c-symbol ".h")]
+      (when (file-exists? hpath) (rm-rf hpath))))
   ;; Mino binary inside submodule
   (when (file-exists? mino-bin) (rm-rf mino-bin))
   (doseq [[bin _] c-benchmarks]
