@@ -47,22 +47,59 @@
                (and in-mtime (> in-mtime out-mtime)))
             inputs))))
 
-;; ---- gen-core-header (needed before compiling mino/src/prim.c) ----
+;; ---- gen-core-header / gen-stdlib-headers ----
+;; install_stdlib.c #includes one C string-literal header per bundled
+;; namespace; these are gitignored generated artifacts, regenerated
+;; whenever the source .clj is newer than the existing header.
+
+(defn- escape-source [src]
+  (let [src     (if (str/ends-with? src "\n")
+                  (subs src 0 (- (count src) 1))
+                  src)
+        escaped (-> src
+                    (str/replace "\\" "\\\\")
+                    (str/replace "\"" "\\\""))]
+    (str/replace escaped "\n" "\\n\"\n    \"")))
 
 (defn- gen-core-header []
   (when (stale? ["mino/src/core.clj"] "mino/src/core_mino.h")
-    (let [src     (slurp "mino/src/core.clj")
-          src     (if (str/ends-with? src "\n")
-                    (subs src 0 (- (count src) 1))
-                    src)
-          escaped (-> src
-                      (str-replace "\\" "\\\\")
-                      (str-replace "\"" "\\\""))
-          body    (str-replace escaped "\n" "\\n\"\n    \"")]
+    (let [body (escape-source (slurp "mino/src/core.clj"))]
       (spit "mino/src/core_mino.h"
             (str "static const char *core_mino_src =\n    \""
                  body "\\n\"\n    ;\n")))
     (println "  gen-core-header: mino/src/core_mino.h updated")))
+
+(def ^:private bundled-stdlib
+  [["lib/clojure/string.clj"           "lib_clojure_string"]
+   ["lib/clojure/set.clj"              "lib_clojure_set"]
+   ["lib/clojure/walk.clj"             "lib_clojure_walk"]
+   ["lib/clojure/edn.clj"              "lib_clojure_edn"]
+   ["lib/clojure/pprint.clj"           "lib_clojure_pprint"]
+   ["lib/clojure/zip.clj"              "lib_clojure_zip"]
+   ["lib/clojure/data.clj"             "lib_clojure_data"]
+   ["lib/clojure/test.clj"             "lib_clojure_test"]
+   ["lib/clojure/template.clj"         "lib_clojure_template"]
+   ["lib/clojure/repl.clj"             "lib_clojure_repl"]
+   ["lib/clojure/stacktrace.clj"       "lib_clojure_stacktrace"]
+   ["lib/clojure/datafy.clj"           "lib_clojure_datafy"]
+   ["lib/clojure/core/protocols.clj"   "lib_clojure_core_protocols"]
+   ["lib/clojure/instant.clj"          "lib_clojure_instant"]
+   ["lib/clojure/spec/alpha.clj"       "lib_clojure_spec_alpha"]
+   ["lib/clojure/core/specs/alpha.clj" "lib_clojure_core_specs_alpha"]
+   ["lib/mino/deps.clj"                "lib_mino_deps"]
+   ["lib/mino/tasks.clj"               "lib_mino_tasks"]
+   ["lib/mino/tasks/builtin.clj"       "lib_mino_tasks_builtin"]])
+
+(defn- gen-stdlib-headers []
+  (doseq [[src-path c-symbol] bundled-stdlib]
+    (let [src-full (str "mino/" src-path)
+          out-path (str "mino/src/" c-symbol ".h")]
+      (when (stale? [src-full] out-path)
+        (spit out-path
+              (str "static const char *" c-symbol "_src =\n    \""
+                   (escape-source (slurp src-full))
+                   "\\n\"\n    ;\n"))
+        (println (str "  gen-stdlib-headers: " out-path " updated"))))))
 
 ;; ---- Build ----
 
@@ -70,6 +107,7 @@
   "Build the mino binary and C benchmark binaries."
   []
   (gen-core-header)
+  (gen-stdlib-headers)
   (let [compiled (atom 0)]
     ;; Compile all .o files
     (doseq [src mino-bin-srcs]
