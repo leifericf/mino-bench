@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+- Tracking mino v0.101.0 (STM cycle): refs, `dosync`, `alter`,
+  `commute`, `ensure`, `ref-set`, `io!`, watches and validators on
+  refs and vars; agents (`agent`, `send`, `send-off`, `await`,
+  `agent-error`, `restart-agent`, error-mode / error-handler);
+  Layer 2a C API mirroring the Clojure surface (`mino_tx_ref`,
+  `mino_tx_run`, `mino_tx_alter_c`, `mino_tx_commute_c`,
+  `mino_tx_ensure`, `mino_tx_ref_set`, `mino_tx_ref_deref`,
+  `mino_is_tx_ref`); cross-state ref defense via MST007;
+  `mino_pcall` API change adding an `out_ex` parameter; plus the
+  intermediate cycle of additions that landed since v0.98.5:
+  MINO_HOST_ARRAY, MINO_MAP_ENTRY, MINO_FLOAT32 value types;
+  strict integer overflow on `+`/`-`/`*`; `bigdec`÷`ratio` widens
+  to bigdec; `cons` returns non-list shape; `aset` for host
+  arrays; fixed-arity enforcement at fn apply. Submodule bumped
+  from `022b83a` (v0.98.5) to `b66c3e5` (v0.101.0). No bench-side
+  code changes -- nothing in `benchmarks/` or `src/` calls
+  `mino_pcall` directly.
+
 - Tracking mino v0.98.5 (Hygiene + Closure cycle: macro hygiene fix
   in `qq_qualify_symbol` so syntax-quoted bare symbols inside a
   macro body qualify against the macro's defining namespace not the
