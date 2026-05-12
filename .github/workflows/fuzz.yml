@@ -63,9 +63,10 @@ jobs:
             -Isrc/diag -Isrc/vendor/imath \
             -o mino \
             src/public/*.c src/runtime/*.c src/gc/*.c src/eval/*.c \
+            src/eval/bc/*.c \
             src/collections/*.c src/prim/*.c src/async/*.c src/interop/*.c \
             src/regex/*.c src/diag/*.c src/vendor/imath/*.c \
-            main.c -lm
+            main.c -lm -lpthread
 
       - name: Corpus smoke (every seed through stdin reader)
         run: ./mino/mino task fuzz-smoke
@@ -128,9 +129,10 @@ jobs:
             -Isrc/diag -Isrc/vendor/imath \
             -o mino \
             src/public/*.c src/runtime/*.c src/gc/*.c src/eval/*.c \
+            src/eval/bc/*.c \
             src/collections/*.c src/prim/*.c src/async/*.c src/interop/*.c \
             src/regex/*.c src/diag/*.c src/vendor/imath/*.c \
-            main.c -lm
+            main.c -lm -lpthread
 
       - name: Build libFuzzer target
         env:
