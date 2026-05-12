@@ -73,11 +73,16 @@
 (println (str "runs: " cold-runs " per interpreter, after 3 warmup runs"))
 (println)
 
+(def ^:private mino-floor-bin "tests/min_embed_floor")
+(def ^:private mino-min-bin   "tests/min_embed")
+
 (let [results
-      (->> [["mino"     mino-bin                 [mino-bin "-e" "(+ 1 2)"]]
-            ["lua"      (which "lua")            [(which "lua")    "-e" "print(1+2)"]]
-            ["janet"    (which "janet")          [(which "janet")  "-e" "(print (+ 1 2))"]]
-            ["babashka" (which "bb")             [(which "bb")     "-e" "(println (+ 1 2))"]]]
+      (->> [["mino-floor" mino-floor-bin         [mino-floor-bin "(+ 1 2)"]]
+            ["mino-min"   mino-min-bin           [mino-min-bin   "(+ 1 2)"]]
+            ["mino"       mino-bin               [mino-bin       "-e" "(+ 1 2)"]]
+            ["lua"        (which "lua")          [(which "lua")   "-e" "print(1+2)"]]
+            ["janet"      (which "janet")        [(which "janet") "-e" "(print (+ 1 2))"]]
+            ["babashka"   (which "bb")           [(which "bb")    "-e" "(println (+ 1 2))"]]]
            (filterv (fn [[_ p _]] (and p (zero? (:exit (sh "test" "-x" p))))))
            (mapv (fn [[name bin argv]]
                    (let [r  (bench name argv)

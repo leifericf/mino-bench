@@ -9,11 +9,22 @@
  *                                    # shell loop measures cold start for
  *                                    # a minimal embed binary.
  *
- *   ./embed_init_bench iters N       # run state_new + install_core +
- *                                    # state_free N times, print mean/median.
+ *   ./embed_init_bench iters N           # run state_new + install_core +
+ *                                        # state_free N times, print mean/median.
  *
- *   ./embed_init_bench iters-all N   # run state_new + install_all +
- *                                    # state_free N times, print mean/median.
+ *   ./embed_init_bench iters-all N       # run state_new + install_all +
+ *                                        # state_free N times, print mean/median.
+ *
+ *   ./embed_init_bench iters-minimal N   # run state_new + install_minimal +
+ *                                        # state_free N times (Floor tier).
+ *
+ *   ./embed_init_bench iters-standard N  # run state_new + install_regex +
+ *                                        # install_bignum + install_multimethods +
+ *                                        # install_protocols + install_transducers +
+ *                                        # install_clojure_core + state_free N
+ *                                        # times (Standard tier — all canonical
+ *                                        # Clojure caps on, no I/O / fs / proc /
+ *                                        # stm / agent / async / host).
  *
  * Source path (link against the same object files that build mino itself):
  *   cc -std=c99 -O2 -Imino/src -Imino/src/public -Imino/src/runtime \
@@ -46,7 +57,49 @@ static int cmp_double(const void *a, const void *b)
     return (da < db) ? -1 : (da > db) ? 1 : 0;
 }
 
-static void run_iters(int n, int with_all)
+enum install_kind {
+    KIND_CORE = 0,
+    KIND_ALL,
+    KIND_MINIMAL,
+    KIND_STANDARD,
+};
+
+static const char *kind_label(enum install_kind k)
+{
+    switch (k) {
+    case KIND_CORE:     return "install_core";
+    case KIND_ALL:      return "install_all";
+    case KIND_MINIMAL:  return "install_minimal";
+    case KIND_STANDARD: return "install_clojure_core";
+    }
+    return "unknown";
+}
+
+static void install_for_kind(mino_state_t *S, mino_env_t *env,
+                              enum install_kind kind)
+{
+    switch (kind) {
+    case KIND_CORE:
+        mino_install_core(S, env);
+        break;
+    case KIND_ALL:
+        mino_install_all(S, env);
+        break;
+    case KIND_MINIMAL:
+        mino_install_minimal(S, env);
+        break;
+    case KIND_STANDARD:
+        mino_install_regex(S, env);
+        mino_install_bignum(S, env);
+        mino_install_multimethods(S, env);
+        mino_install_protocols(S, env);
+        mino_install_transducers(S, env);
+        mino_install_clojure_core(S, env);
+        break;
+    }
+}
+
+static void run_iters(int n, enum install_kind kind)
 {
     double *samples = (double *)calloc((size_t)n, sizeof(double));
     if (samples == NULL) { fprintf(stderr, "oom\n"); exit(1); }
@@ -56,11 +109,7 @@ static void run_iters(int n, int with_all)
         double t0 = now_ns();
         mino_state_t *S = mino_state_new();
         mino_env_t   *env = mino_env_new(S);
-        if (with_all) {
-            mino_install_all(S, env);
-        } else {
-            mino_install_core(S, env);
-        }
+        install_for_kind(S, env, kind);
         mino_env_free(S, env);
         mino_state_free(S);
         double dt = now_ns() - t0;
@@ -73,7 +122,7 @@ static void run_iters(int n, int with_all)
     double minv   = samples[0];
     double maxv   = samples[n - 1];
     double p90    = samples[(int)(0.9 * n) - 1];
-    printf("iters=%d kind=%s\n", n, with_all ? "install_all" : "install_core");
+    printf("iters=%d kind=%s\n", n, kind_label(kind));
     printf("  min    = %7.3f ms\n", minv / 1e6);
     printf("  median = %7.3f ms\n", median / 1e6);
     printf("  mean   = %7.3f ms\n", mean / 1e6);
@@ -106,11 +155,19 @@ static int eval_once(const char *expr)
 int main(int argc, char **argv)
 {
     if (argc >= 3 && strcmp(argv[1], "iters") == 0) {
-        run_iters(atoi(argv[2]), 0);
+        run_iters(atoi(argv[2]), KIND_CORE);
         return 0;
     }
     if (argc >= 3 && strcmp(argv[1], "iters-all") == 0) {
-        run_iters(atoi(argv[2]), 1);
+        run_iters(atoi(argv[2]), KIND_ALL);
+        return 0;
+    }
+    if (argc >= 3 && strcmp(argv[1], "iters-minimal") == 0) {
+        run_iters(atoi(argv[2]), KIND_MINIMAL);
+        return 0;
+    }
+    if (argc >= 3 && strcmp(argv[1], "iters-standard") == 0) {
+        run_iters(atoi(argv[2]), KIND_STANDARD);
         return 0;
     }
     if (argc >= 3 && strcmp(argv[1], "-e") == 0) {
