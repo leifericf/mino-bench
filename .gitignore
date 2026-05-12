@@ -38,4 +38,7 @@ tests/min_embed
 # Generated perf rollups
 results/perf_summary.txt
 results/perf_summary.edn
+results/coldstart_compare.edn
 results/.tmp_stripped
+results/.tmp_installed_stripped
+results/.tmp_cold_compare_stripped
