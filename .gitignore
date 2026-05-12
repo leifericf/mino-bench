@@ -30,3 +30,12 @@ Thumbs.db
 fuzz/fuzz_reader_asan
 fuzz/fuzz_reader_libfuzzer
 *.dSYM/
+
+# tests/ harness binaries (built by tests/refresh_perf.clj)
+tests/embed_init_bench
+tests/min_embed
+
+# Generated perf rollups
+results/perf_summary.txt
+results/perf_summary.edn
+results/.tmp_stripped

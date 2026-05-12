@@ -13,11 +13,11 @@
       (let [lst (loop [i 0 acc nil]
                   (if (>= i 1000) acc (recur (inc i) (cons i acc))))]
         (fn [] (loop [l lst n 0]
-                 (if (nil? l) n (recur (rest l) (inc n))))))]
+                 (if l (recur (next l) (inc n)) n))))]
      ["walk 10000-element list"  100
       (let [lst (loop [i 0 acc nil]
                   (if (>= i 10000) acc (recur (inc i) (cons i acc))))]
         (fn [] (loop [l lst n 0]
-                 (if (nil? l) n (recur (rest l) (inc n))))))]]))
+                 (if l (recur (next l) (inc n)) n))))]]))
 
 (run)

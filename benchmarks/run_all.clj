@@ -2,6 +2,8 @@
 ;; Each process gets a fresh heap, so GC pressure from one benchmark
 ;; does not affect others.
 
+(require '[clojure.string :as str])
+
 (def ^:private mino-bin "mino/mino")
 
 (def ^:private bench-files
@@ -20,8 +22,8 @@
 (defn- extract-edn-lines
   "Extract lines prefixed with ;edn; from output, return as vector of strings."
   [output]
-  (filterv #(starts-with? % ";edn; ")
-           (split output "\n")))
+  (filterv #(str/starts-with? % ";edn; ")
+           (str/split output "\n")))
 
 (defn- strip-prefix [line]
   (subs line 6))
@@ -29,18 +31,28 @@
 (println "=== mino-bench: mino-level benchmarks (isolated) ===")
 (println)
 
-(let [all-edn (atom [])]
+(let [all-edn (atom [])
+      skipped (atom [])]
   (doseq [f bench-files]
-    (let [output   (sh! mino-bin f)
-          edn-lines (extract-edn-lines output)
-          ;; Print the human-readable lines (non-edn)
-          human    (filterv #(not (starts-with? % ";edn; "))
-                            (split output "\n"))]
-      (doseq [line human]
-        (when (not (= line ""))
-          (println line)))
-      (doseq [line edn-lines]
-        (swap! all-edn conj (strip-prefix line)))))
+    (let [r (sh mino-bin f)
+          ok? (zero? (:exit r))
+          output (str (:out r) (:err r))]
+      (if ok?
+        (let [edn-lines (extract-edn-lines output)
+              human    (filterv #(not (str/starts-with? % ";edn; "))
+                                (str/split output "\n"))]
+          (doseq [line human]
+            (when (not (= line ""))
+              (println line)))
+          (doseq [line edn-lines]
+            (swap! all-edn conj (strip-prefix line))))
+        (do
+          (swap! skipped conj f)
+          (println (str "!! " f " failed (exit " (:exit r) "); skipping"))
+          (let [head (->> (str/split output "\n")
+                          (filterv #(not (= "" %)))
+                          (take 3))]
+            (doseq [line head] (println (str "   " line))))))))
 
   ;; Write combined report
   (let [report (str ";; mino-bench report (isolated processes)\n"

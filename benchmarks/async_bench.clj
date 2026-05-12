@@ -1,6 +1,6 @@
 (ns benchmarks.async-bench)
-(require '[mino.bench :as bench])
-(require "core/async")
+(require '[mino.bench :as bench]
+         '[clojure.core.async :refer :all])
 
 ;; Five suites chosen to isolate distinct cost buckets in the current
 ;; C-backed async implementation:

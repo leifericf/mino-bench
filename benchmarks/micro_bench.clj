@@ -1,5 +1,6 @@
 (ns benchmarks.micro-bench)
-(require '[mino.bench :as bench])
+(require '[mino.bench :as bench]
+         '[clojure.string :as str])
 
 (defn run []
   ;; --- Environment lookup cost ---
@@ -118,7 +119,7 @@
       (let [s (apply str (repeat 100 "x"))]
         (fn [] (subs s 25 75)))]
      ["split on space" 10000
-      (fn [] (split "one two three four five" " "))]
+      (fn [] (str/split "one two three four five" " "))]
      ["join with comma" 10000
       (fn [] (str/join "," ["a" "b" "c" "d" "e"]))]])
 
