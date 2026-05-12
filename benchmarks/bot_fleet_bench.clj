@@ -1,7 +1,6 @@
 (ns benchmarks.bot-fleet-bench)
-(require '[mino.bench :as bench])
-(require "core/channel")
-(require "core/async")
+(require '[mino.bench :as bench]
+         '[clojure.core.async :refer :all])
 
 ;; Five suites that isolate the cost components of an embedded
 ;; "bot fleet" use case: many long-lived worker processes per runtime,

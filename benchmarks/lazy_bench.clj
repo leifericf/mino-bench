@@ -19,28 +19,43 @@
 ;; fast-paths are worth the ~360 LOC of prim_lazy.c.
 
 ;; --- Pure-mino equivalents (no lazy-map-1 / lazy-filter / lazy-take) ---
+;;
+;; Recursive helpers wrap the lazy-seq body in a letfn-bound `go`
+;; rather than calling the top-level var by name. Self-recursive
+;; defns whose body is a lazy-seq trip a current-ns / fn-ambient
+;; lookup gap in mino's lazy-seq realisation: the captured env
+;; chain does not always reach back to the var registry when the
+;; outer fn is bc-compiled, so the recursive call raises
+;; "unbound symbol". The letfn binds the helper lexically, which
+;; keeps the recursion resolvable through ordinary closure capture.
 
 (defn map-pure [f coll]
-  (lazy-seq
-    (let [s (seq coll)]
-      (when s
-        (cons (f (first s)) (map-pure f (rest s)))))))
+  (letfn [(go [coll]
+            (lazy-seq
+              (let [s (seq coll)]
+                (when s
+                  (cons (f (first s)) (go (rest s)))))))]
+    (go coll)))
 
 (defn filter-pure [pred coll]
-  (lazy-seq
-    (let [s (seq coll)]
-      (when s
-        (let [x (first s) r (rest s)]
-          (if (pred x)
-            (cons x (filter-pure pred r))
-            (filter-pure pred r)))))))
+  (letfn [(go [coll]
+            (lazy-seq
+              (let [s (seq coll)]
+                (when s
+                  (let [x (first s) r (rest s)]
+                    (if (pred x)
+                      (cons x (go r))
+                      (go r)))))))]
+    (go coll)))
 
 (defn take-pure [n coll]
-  (lazy-seq
-    (when (pos? n)
-      (let [s (seq coll)]
-        (when s
-          (cons (first s) (take-pure (dec n) (rest s))))))))
+  (letfn [(go [n coll]
+            (lazy-seq
+              (when (pos? n)
+                (let [s (seq coll)]
+                  (when s
+                    (cons (first s) (go (dec n) (rest s))))))))]
+    (go n coll)))
 
 (defn run []
   ;; --- Suite 1: single-op realization ---

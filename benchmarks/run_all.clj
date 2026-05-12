@@ -15,7 +15,6 @@
    "benchmarks/micro_bench.clj"
    "benchmarks/realistic_bench.clj"
    "benchmarks/async_bench.clj"
-   "benchmarks/actor_bench.clj"
    "benchmarks/lazy_bench.clj"
    "benchmarks/bot_fleet_bench.clj"])
 
