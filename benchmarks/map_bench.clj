@@ -17,6 +17,14 @@
         (fn [] (get m :k500)))]
      ["dissoc from 100-key map" 1000
       (let [m (into {} (map (fn [i] [(keyword (str "k" i)) i]) (range 100)))]
-        (fn [] (dissoc m :k50)))]]))
+        (fn [] (dissoc m :k50)))]
+     ["transient assoc! 1000 keys" 100
+      (fn [] (persistent! (loop [i 0 t (transient {})]
+                            (if (>= i 1000) t
+                                (recur (inc i)
+                                       (assoc! t (keyword (str "k" i)) i))))))]
+     ["into {} from 1000-pair vec" 100
+      (let [pairs (vec (map vector (range 1000) (range 1000)))]
+        (fn [] (into {} pairs)))]]))
 
 (run)

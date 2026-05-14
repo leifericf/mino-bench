@@ -10,6 +10,7 @@
   ["benchmarks/cons_bench.clj"
    "benchmarks/vec_bench.clj"
    "benchmarks/map_bench.clj"
+   "benchmarks/set_bench.clj"
    "benchmarks/intern_bench.clj"
    "benchmarks/eval_bench.clj"
    "benchmarks/micro_bench.clj"
@@ -20,7 +21,8 @@
    "benchmarks/protocol_bench.clj"
    "benchmarks/pipeline_consumers_bench.clj"
    "benchmarks/reduce_int_bench.clj"
-   "benchmarks/recur_shape_bench.clj"])
+   "benchmarks/recur_shape_bench.clj"
+   "benchmarks/bigint_bench.clj"])
 
 (defn- extract-edn-lines
   "Extract lines prefixed with ;edn; from output, return as vector of strings."
