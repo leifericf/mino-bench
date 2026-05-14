@@ -19,7 +19,8 @@
    "benchmarks/bot_fleet_bench.clj"
    "benchmarks/protocol_bench.clj"
    "benchmarks/pipeline_consumers_bench.clj"
-   "benchmarks/reduce_int_bench.clj"])
+   "benchmarks/reduce_int_bench.clj"
+   "benchmarks/recur_shape_bench.clj"])
 
 (defn- extract-edn-lines
   "Extract lines prefixed with ;edn; from output, return as vector of strings."
