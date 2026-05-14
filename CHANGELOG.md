@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+- New `benchmarks/protocol_bench.clj` (wired into `run_all`):
+  five-bench microsuite covering monomorphic, bi-morphic, and
+  tri-morphic protocol-method invocation plus a realistic
+  reduce-over-mixed-types loop. At v0.157.0 the monomorphic case
+  measures ~3.4 µs/call (~50x typical fn-call cost in mino); the
+  bench establishes the baseline that a future protocol-keyed
+  inline cache will be measured against.
+
+- Submodule pointer bumped to mino v0.157.1. Covers the
+  bc-frontiers cycle (v0.152.0–v0.157.1): write-side fast-lane
+  opcodes (`OP_CONJ_VEC`, `OP_ASSOC`), small-prim inlining for
+  vectors (`OP_FIRST_VEC` / `OP_COUNT_VEC` / `OP_EMPTY_VEC`),
+  record fast path + `(:kw coll)` inlining inside
+  `OP_GET_KW_MAP`, inline-cached call sites (`OP_CALL_CACHED`),
+  generic get + arity-2 dissoc fast lanes, transducer fusion in
+  `prim_reduce` via thunk-pointer inspection, and the
+  `MINO_BC_OP_COUNTS=1` build flag for per-opcode dispatch
+  profiling. Bench wins to expect across the matrix: pipeline-sum
+  -77%, get-str-map -81%, get-kw-record -93%, fib-30 -13%,
+  conj-vec -34%, count-vec -94%.
+
 - Tracking mino v0.101.0 (STM cycle): refs, `dosync`, `alter`,
   `commute`, `ensure`, `ref-set`, `io!`, watches and validators on
   refs and vars; agents (`agent`, `send`, `send-off`, `await`,
