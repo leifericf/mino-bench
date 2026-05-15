@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- `benchmarks/jit_bench.clj` extended to cover the full CPJIT
+  stencil set after v0.202.0: trivial shapes (v0.195.0), arith II
+  (v0.197.0 / v0.198.0), unary + IK (v0.199.0), control flow
+  (v0.200.0 JMP / JMPIFNOT), and counted-loop bodies (sum-to /
+  count-to / countdown / lockstep -- the latter three exercise
+  fused bytecode ops and where applicable the v0.201.0 fused-loop
+  stencils). The wrapper-closure overhead in `bench/run-suite`
+  dominates for the small-fn rows (each fn-call wrapper adds
+  ~1.5us of eval / apply); the counted-loop rows are where the
+  cycle's wins show.
+
 - New `benchmarks/protocol_bench.clj` (wired into `run_all`):
   five-bench microsuite covering monomorphic, bi-morphic, and
   tri-morphic protocol-method invocation plus a realistic
