@@ -56,6 +56,14 @@
   [tenths]
   (str (quot tenths 10) "." (mod tenths 10) "%"))
 
+(defn- format-bytes
+  "Format a byte count as a human-readable string (KB/MB)."
+  [n]
+  (cond
+    (>= n 1048576) (str (format "%.1f" (/ (float n) 1048576.0)) "MB")
+    (>= n 1024)    (str (format "%.1f" (/ (float n) 1024.0)) "KB")
+    :else           (str n "B")))
+
 (defn report-human
   "Print a human-readable benchmark result to stderr."
   [result]
@@ -64,6 +72,7 @@
                " total, " (format-ns (:mean-ns result))
                "/op (" (:iterations result) " iters"
                ", " (or (:gc-minor result) 0) "+" (or (:gc-major result) 0) " GCs"
+               ", " (format-bytes (or (:alloc-bytes-per-op result) 0)) "/op alloc"
                ", " (quot (:gc-bytes-freed result) 1024) "KB freed"
                ", " (format-ns (or (:gc-ns result) 0)) " gc"
                " " (format-pct-tenths (or (:gc-pct-tenths result) 0))
