@@ -26,7 +26,7 @@ static double bench_build(size_t n)
 {
     mino_state_t *S = mino_state_new();
     char        expr[256];
-    mino_env_t *env = mino_new(S);
+    mino_env_t *env = mino_env_new_default(S);
     mino_val_t *form;
     const char *end;
     double      t0, elapsed;
@@ -51,7 +51,7 @@ static double bench_get(size_t n, size_t reps)
 {
     mino_state_t *S = mino_state_new();
     char        expr[256];
-    mino_env_t *env = mino_new(S);
+    mino_env_t *env = mino_env_new_default(S);
     mino_val_t *form;
     const char *end;
     double      t0;
@@ -88,7 +88,7 @@ static double bench_assoc(size_t n, size_t reps)
 {
     mino_state_t *S = mino_state_new();
     char        expr[256];
-    mino_env_t *env = mino_new(S);
+    mino_env_t *env = mino_env_new_default(S);
     mino_val_t *form;
     const char *end;
     double      t0;

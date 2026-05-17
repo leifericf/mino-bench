@@ -28,7 +28,7 @@ static double now_ms(void)
 int main(void)
 {
     mino_state_t *S = mino_state_new();
-    mino_env_t *env = mino_new(S);
+    mino_env_t *env = mino_env_new_default(S);
     double t0, t1;
 
     printf("mino performance profile\n");
@@ -43,7 +43,7 @@ int main(void)
 
     BENCH("mino_state_new + mino_new + free", 100, {
         mino_state_t *s = mino_state_new();
-        mino_env_t *e = mino_new(s);
+        mino_env_t *e = mino_env_new_default(s);
         mino_env_free(s, e);
         mino_state_free(s);
     });

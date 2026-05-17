@@ -26,7 +26,7 @@ static double bench_map(size_t n)
 {
     mino_state_t *S = mino_state_new();
     char        expr[256];
-    mino_env_t *env = mino_new(S);
+    mino_env_t *env = mino_env_new_default(S);
     mino_val_t *form;
     const char *end;
     double      t0, elapsed;
@@ -49,7 +49,7 @@ static double bench_filter(size_t n)
 {
     mino_state_t *S = mino_state_new();
     char        expr[256];
-    mino_env_t *env = mino_new(S);
+    mino_env_t *env = mino_env_new_default(S);
     mino_val_t *form;
     const char *end;
     double      t0, elapsed;
@@ -73,7 +73,7 @@ static double bench_reduce(size_t n)
 {
     mino_state_t *S = mino_state_new();
     char        expr[256];
-    mino_env_t *env = mino_new(S);
+    mino_env_t *env = mino_env_new_default(S);
     mino_val_t *form;
     const char *end;
     double      t0, elapsed;
@@ -95,7 +95,7 @@ static double bench_sort(size_t n)
 {
     mino_state_t *S = mino_state_new();
     char        expr[256];
-    mino_env_t *env = mino_new(S);
+    mino_env_t *env = mino_env_new_default(S);
     mino_val_t *form;
     const char *end;
     double      t0, elapsed;
