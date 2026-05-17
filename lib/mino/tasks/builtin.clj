@@ -37,8 +37,19 @@
 ;; Mino library sources: discover every .c file under mino/src/ at
 ;; task-load time. Matches whatever the pinned submodule SHA carries
 ;; without requiring this list to be edited when the C tree moves.
+;;
+;; Exclude src/eval/bc/stencils/*.c: those files use
+;; __attribute__((musttail)) return ... which gcc doesn't support and
+;; clang only supports under specific options. They're meant for
+;; compile-and-extract by `gen-stencils` (output bytes baked into
+;; stencils_<triple>.h headers), NOT linked into a runtime binary.
+;; The host build (mino's Makefile) drops them implicitly via its
+;; SRCS glob too.
 (def ^:private mino-srcs
-  (vec (filter #(str/ends-with? % ".c") (file-seq "mino/src"))))
+  (vec (filter (fn [p]
+                 (and (str/ends-with? p ".c")
+                      (not (str/starts-with? p "mino/src/eval/bc/stencils/"))))
+               (file-seq "mino/src"))))
 
 (def ^:private mino-bin-srcs (conj mino-srcs "mino/main.c"))
 
@@ -251,9 +262,13 @@
   []
   (gen-core-header)
   (let [cc-fuzz (or (getenv "CC") "clang")
-        flags   ["-g" "-O1" "-std=c99" "-Wall" "-Wextra" "-Imino/src"
-                 "-fsanitize=fuzzer,address,undefined"
-                 "-fno-omit-frame-pointer"]
+        ;; Reuse the same -I set as the plain fuzz build so internal
+        ;; headers (`diag.h`, `host_threads.h`, etc.) resolve from
+        ;; their nested directories under mino/src.
+        flags   (into ["-g" "-O1" "-std=c99" "-Wall" "-Wextra"]
+                      (concat (str/split include-flags " ")
+                              ["-fsanitize=fuzzer,address,undefined"
+                               "-fno-omit-frame-pointer"]))
         args    (into [cc-fuzz] (concat flags
                                         ["-o" "fuzz/fuzz_reader_libfuzzer"
                                          "fuzz/fuzz_reader.c"]
