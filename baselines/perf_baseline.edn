@@ -3,19 +3,19 @@
 ;; Rewrite this file in the same commit as an intentional
 ;; eval-floor or allocation-shape change.
 {
-  "arith-add" {:ns 3425 :bytes 992}
-  "arith-inc" {:ns 3210 :bytes 928}
-  "assoc-small" {:ns 4309 :bytes 1504}
-  "cons-create" {:ns 3625 :bytes 1056}
-  "count-vec3" {:ns 3346 :bytes 928}
-  "do-block" {:ns 2967 :bytes 864}
-  "fn-call-identity" {:ns 3025 :bytes 1040}
-  "if-branch" {:ns 2839 :bytes 864}
-  "let-local-lookup" {:ns 2950 :bytes 976}
-  "loop-recur-5" {:ns 7252 :bytes 2720}
-  "re-find-simple" {:ns 4288 :bytes 1300}
-  "read-int" {:ns 3444 :bytes 928}
-  "read-list" {:ns 3750 :bytes 1184}
-  "small-map" {:ns 3156 :bytes 864}
-  "vec3-create" {:ns 3191 :bytes 864}
+  "arith-add" {:ns 6418 :bytes 6656}
+  "arith-inc" {:ns 6246 :bytes 6656}
+  "assoc-small" {:ns 7626 :bytes 7424}
+  "cons-create" {:ns 7107 :bytes 6896}
+  "count-vec3" {:ns 6483 :bytes 6656}
+  "do-block" {:ns 6226 :bytes 6656}
+  "fn-call-identity" {:ns 5239 :bytes 6736}
+  "if-branch" {:ns 5146 :bytes 6656}
+  "let-local-lookup" {:ns 5160 :bytes 6656}
+  "loop-recur-5" {:ns 6803 :bytes 6656}
+  "re-find-simple" {:ns 7477 :bytes 7062}
+  "read-int" {:ns 6638 :bytes 6738}
+  "read-list" {:ns 7024 :bytes 7058}
+  "small-map" {:ns 6549 :bytes 6704}
+  "vec3-create" {:ns 6183 :bytes 6656}
 }
