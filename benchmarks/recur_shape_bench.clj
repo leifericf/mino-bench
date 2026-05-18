@@ -23,4 +23,13 @@
    ["loop-2b-ge 10k"      100
     (fn [] (loop [i 0 j 0] (if (>= i 10000) j (recur (inc i) (inc j)))))]
    ["loop-2b-lt 10k"      100
-    (fn [] (loop [i 0 j 0] (if (< i 10000) (recur (inc i) (inc j)) j)))]])
+    (fn [] (loop [i 0 j 0] (if (< i 10000) (recur (inc i) (inc j)) j)))]
+   ;; (+ counter 1) and (+ 1 counter) are user-canonical equivalents
+   ;; for (inc counter). The matcher accepts both shapes; these rows
+   ;; should match the (inc i) timings above to within noise.
+   ["loop-1b-ge 10k (+ i 1)"  100
+    (fn [] (loop [i 0] (if (>= i 10000) i (recur (+ i 1)))))]
+   ["loop-1b-ge 10k (+ 1 i)"  100
+    (fn [] (loop [i 0] (if (>= i 10000) i (recur (+ 1 i)))))]
+   ["loop-2b-ge 10k (+ i 1)"  100
+    (fn [] (loop [i 0 j 0] (if (>= i 10000) j (recur (+ i 1) (inc j)))))]])
