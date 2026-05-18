@@ -80,7 +80,9 @@ static void install_for_kind(mino_state_t *S, mino_env_t *env,
 {
     switch (kind) {
     case KIND_CORE:
-        mino_install_core(S, env);
+        /* "core" used to mean the post-floor sandbox surface; the
+         * alpha cleanup renamed it to mino_install_sandbox. */
+        mino_install_sandbox(S, env);
         break;
     case KIND_ALL:
         mino_install_all(S, env);
@@ -89,12 +91,17 @@ static void install_for_kind(mino_state_t *S, mino_env_t *env,
         mino_install_minimal(S, env);
         break;
     case KIND_STANDARD:
-        mino_install_regex(S, env);
-        mino_install_bignum(S, env);
-        mino_install_multimethods(S, env);
-        mino_install_protocols(S, env);
-        mino_install_transducers(S, env);
-        mino_install_clojure_core(S, env);
+        /* Granular installers were collapsed into the bitmask form
+         * during the alpha cleanup. The same surface area as the
+         * old standard tier is the sandbox preset minus I/O / FS /
+         * STM / agents / async; the bitmask spells it out. */
+        mino_install(S, env,
+                     MINO_CAP_FLOOR
+                     | MINO_CAP_REGEX
+                     | MINO_CAP_BIGNUM
+                     | MINO_CAP_MULTIMETHODS
+                     | MINO_CAP_PROTOCOLS
+                     | MINO_CAP_TRANSDUCERS);
         break;
     }
 }
@@ -131,15 +138,15 @@ static void run_iters(int n, enum install_kind kind)
     free(samples);
 }
 
-/* Eval-once mode: same shape as `mino -e EXPR` but with the minimal
- * surface (state + install_core + eval + free). Used by the shell-side
- * cold-start harness to compare full-standalone cold start against an
- * absolute-minimum embed cold start. */
+/* Eval-once mode: same shape as `mino -e EXPR` but with the sandbox
+ * surface (state + install_sandbox + eval + free). Used by the shell-
+ * side cold-start harness to compare full-standalone cold start
+ * against an absolute-minimum embed cold start. */
 static int eval_once(const char *expr)
 {
     mino_state_t *S = mino_state_new();
     mino_env_t   *env = mino_env_new(S);
-    mino_install_core(S, env);
+    mino_install_sandbox(S, env);
     mino_val_t *r = mino_eval_string(S, expr, env);
     int rc = (r == NULL) ? 1 : 0;
     if (r != NULL) {
