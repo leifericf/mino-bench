@@ -37,6 +37,7 @@ jobs:
           gen_header src/core.clj                     core_mino
           gen_header lib/clojure/string.clj           lib_clojure_string
           gen_header lib/clojure/set.clj              lib_clojure_set
+          gen_header lib/clojure/math.clj             lib_clojure_math
           gen_header lib/clojure/walk.clj             lib_clojure_walk
           gen_header lib/clojure/edn.clj              lib_clojure_edn
           gen_header lib/clojure/pprint.clj           lib_clojure_pprint
@@ -103,6 +104,7 @@ jobs:
           gen_header src/core.clj                     core_mino
           gen_header lib/clojure/string.clj           lib_clojure_string
           gen_header lib/clojure/set.clj              lib_clojure_set
+          gen_header lib/clojure/math.clj             lib_clojure_math
           gen_header lib/clojure/walk.clj             lib_clojure_walk
           gen_header lib/clojure/edn.clj              lib_clojure_edn
           gen_header lib/clojure/pprint.clj           lib_clojure_pprint
