@@ -34,7 +34,9 @@ fuzz/fuzz_reader_libfuzzer
 # tests/ harness binaries (built by tests/refresh_perf.clj)
 tests/embed_init_bench
 tests/min_embed
+tests/min_embed_jit
 tests/min_embed_floor
+tests/min_embed_floor_jit
 
 # Generated perf rollups
 results/perf_summary.txt

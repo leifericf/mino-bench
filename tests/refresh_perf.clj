@@ -25,8 +25,11 @@
 ;; ---- Configuration -------------------------------------------------
 
 (def ^:private mino-bin            "./mino/mino")
-(def ^:private min-embed-bin       "tests/min_embed")
-(def ^:private min-embed-floor-bin "tests/min_embed_floor")
+(def ^:private mino-lean-bin       "./mino/mino-lean")
+(def ^:private min-embed-bin        "tests/min_embed")
+(def ^:private min-embed-jit-bin    "tests/min_embed_jit")
+(def ^:private min-embed-floor-bin       "tests/min_embed_floor")
+(def ^:private min-embed-floor-jit-bin   "tests/min_embed_floor_jit")
 (def ^:private init-bench-bin      "tests/embed_init_bench")
 (def ^:private summary-txt         "results/perf_summary.txt")
 (def ^:private summary-edn         "results/perf_summary.edn")
@@ -118,27 +121,37 @@
       "-Wl,-dead_strip"
       "-Wl,--gc-sections")))
 
+(defn- build-min-embed-pair!
+  "Build a min-embed-style binary in both no-JIT and +JIT flavours so
+   the perf page can show the JIT cost honestly. Each tier ships an
+   apples-to-apples pair: the dead-strip link flag drops unreachable
+   subsystems either way, so the diff between the two binaries
+   reflects only the JIT pipeline's live symbols at this surface."
+  [no-jit-bin jit-bin source-c]
+  (let [dead-strip (dead-code-link-flag)
+        common     (concat ["-std=c99" "-O2"
+                            "-ffunction-sections" "-fdata-sections"]
+                           includes)
+        link       [dead-strip "-lm" "-lpthread"]
+        srcs       (find-c-sources)]
+    (println (str "  building " no-jit-bin " (no JIT, " dead-strip ")"))
+    (run-cc! (concat common
+                     ["-o" no-jit-bin source-c]
+                     srcs link))
+    (run-strip! no-jit-bin no-jit-bin)
+    (println (str "  building " jit-bin    " (+JIT, "  dead-strip ")"))
+    (run-cc! (concat common
+                     ["-DMINO_CPJIT=1" "-o" jit-bin source-c]
+                     srcs link))
+    (run-strip! jit-bin jit-bin)))
+
 (defn- build-min-embed! []
-  (let [dead-strip (dead-code-link-flag)]
-    (println (str "  building tests/min_embed (" dead-strip ")"))
-    (run-cc! (concat ["-std=c99" "-O2"
-                      "-ffunction-sections" "-fdata-sections"]
-                     includes
-                     ["-o" min-embed-bin "tests/min_embed.c"]
-                     (find-c-sources)
-                     [dead-strip "-lm" "-lpthread"])))
-  (run-strip! min-embed-bin min-embed-bin))
+  (build-min-embed-pair! min-embed-bin min-embed-jit-bin
+                          "tests/min_embed.c"))
 
 (defn- build-min-embed-floor! []
-  (let [dead-strip (dead-code-link-flag)]
-    (println (str "  building tests/min_embed_floor (" dead-strip ")"))
-    (run-cc! (concat ["-std=c99" "-O2"
-                      "-ffunction-sections" "-fdata-sections"]
-                     includes
-                     ["-o" min-embed-floor-bin "tests/min_embed_floor.c"]
-                     (find-c-sources)
-                     [dead-strip "-lm" "-lpthread"])))
-  (run-strip! min-embed-floor-bin min-embed-floor-bin))
+  (build-min-embed-pair! min-embed-floor-bin min-embed-floor-jit-bin
+                          "tests/min_embed_floor.c"))
 
 ;; ---- Statistical helpers -------------------------------------------
 
@@ -246,20 +259,29 @@
             {:path bin :stripped-bytes bytes}))))))
 
 (defn- footprint []
-  (let [tmp "results/.tmp_stripped"]
-    (run-strip! mino-bin tmp)
-    (let [full     (file-size tmp)
-          minemb   (file-size min-embed-bin)
-          floor    (file-size min-embed-floor-bin)
-          released (installed-mino)
-          base     {:floor-embed-bytes      floor
-                    :min-embed-bytes        minemb
-                    :full-standalone-bytes  full
-                    :c-source-bytes         (c-source-bytes)
-                    :vendor-bytes           (vendor-bytes)
-                    :stdlib-header-bytes    (stdlib-header-bytes)
-                    :core-clj-bytes         (file-size "mino/src/core.clj")}]
-      (sh "rm" "-f" tmp)
+  (let [tmp-full     "results/.tmp_stripped"
+        tmp-lean     "results/.tmp_stripped_lean"]
+    (run-strip! mino-bin tmp-full)
+    (when (file-exists? mino-lean-bin)
+      (run-strip! mino-lean-bin tmp-lean))
+    (let [full           (file-size tmp-full)
+          lean           (when (file-exists? mino-lean-bin) (file-size tmp-lean))
+          minemb         (file-size min-embed-bin)
+          minemb-jit     (file-size min-embed-jit-bin)
+          floor          (file-size min-embed-floor-bin)
+          floor-jit      (file-size min-embed-floor-jit-bin)
+          released       (installed-mino)
+          base           {:floor-embed-bytes        floor
+                          :floor-embed-jit-bytes    floor-jit
+                          :min-embed-bytes          minemb
+                          :min-embed-jit-bytes      minemb-jit
+                          :standalone-lean-bytes    lean
+                          :standalone-jit-bytes     full
+                          :c-source-bytes           (c-source-bytes)
+                          :vendor-bytes             (vendor-bytes)
+                          :stdlib-header-bytes      (stdlib-header-bytes)
+                          :core-clj-bytes           (file-size "mino/src/core.clj")}]
+      (sh "rm" "-f" tmp-full tmp-lean)
       (if released
         (assoc base :released-binary released)
         base))))
@@ -286,7 +308,8 @@
   (when n (str n " bytes (~" (quot n 1024) " KB)")))
 
 (defn- emit-text [summary]
-  (let [{:keys [cold-floor cold-full-plus cold-full-nil cold-min
+  (let [{:keys [cold-floor cold-floor-jit cold-min cold-min-jit
+                cold-full-plus cold-full-nil cold-full-lean
                 init-minimal init-core init-all footprint mino-version
                 bench-tail]} summary]
     (str
@@ -297,32 +320,46 @@
                                    "(unknown)")) "\n"
       "mino      : " mino-version "\n\n"
       "-- Cold start (wall time including process spawn) --\n"
-      "  Floor    min embed       '(+ 1 2)'    : " (ms-str cold-floor) "\n"
-      "  Sandbox  min embed       '(+ 1 2)'    : " (ms-str cold-min) "\n"
-      "  Standalone full -e       '(+ 1 2)'    : " (ms-str cold-full-plus) "\n"
-      "  Standalone full -e       nil          : " (ms-str cold-full-nil) "\n\n"
+      "  Floor      (no JIT) '(+ 1 2)'  : " (ms-str cold-floor) "\n"
+      "  Floor      + JIT    '(+ 1 2)'  : " (ms-str cold-floor-jit) "\n"
+      "  Sandbox    (no JIT) '(+ 1 2)'  : " (ms-str cold-min) "\n"
+      "  Sandbox    + JIT    '(+ 1 2)'  : " (ms-str cold-min-jit) "\n"
+      (when cold-full-lean
+        (str "  Standalone (no JIT, mino-lean) '(+ 1 2)' : "
+             (ms-str cold-full-lean) "\n"))
+      "  Standalone + JIT (mino) '(+ 1 2)' : " (ms-str cold-full-plus) "\n"
+      "  Standalone + JIT (mino) nil       : " (ms-str cold-full-nil) "\n\n"
       "-- In-process init/teardown (no process spawn) --\n"
       "  Floor      state_new + install_minimal + state_free : " (ms-str init-minimal) "\n"
       "  Sandbox    state_new + install_sandbox + state_free : " (ms-str init-core) "\n"
       "  Standalone state_new + install_all     + state_free : " (ms-str init-all) "\n\n"
-      "-- Footprint --\n"
-      "  Floor   embed binary (install_minimal, stripped) : "
+      "-- Footprint (stripped) --\n"
+      "  Floor      (no JIT) : "
         (bytes-kb (:floor-embed-bytes footprint)) "\n"
-      "  Sandbox embed binary (install_sandbox, stripped) : "
+      "  Floor      + JIT    : "
+        (bytes-kb (:floor-embed-jit-bytes footprint)) "\n"
+      "  Sandbox    (no JIT) : "
         (bytes-kb (:min-embed-bytes footprint)) "\n"
-      "  Standalone full mino   (stripped)               : "
-        (bytes-kb (:full-standalone-bytes footprint)) "\n"
+      "  Sandbox    + JIT    : "
+        (bytes-kb (:min-embed-jit-bytes footprint)) "\n"
+      (when (:standalone-lean-bytes footprint)
+        (str "  Standalone (no JIT, mino-lean) : "
+             (bytes-kb (:standalone-lean-bytes footprint)) "\n"))
+      "  Standalone + JIT (mino) : "
+        (bytes-kb (:standalone-jit-bytes footprint)) "\n"
       (if-let [rel (:released-binary footprint)]
         (str "  released binary at " (:path rel) " (strip --strip-all) : "
              (bytes-kb (:stripped-bytes rel)) "\n")
         "  released binary on PATH                          : (not present)\n")
-      "  C source tree (no vendor)                        : "
+      "\n"
+      "-- Source side --\n"
+      "  C source tree (no vendor) : "
         (bytes-kb (:c-source-bytes footprint)) "\n"
-      "  vendor (imath)                                   : "
+      "  vendor (imath)            : "
         (bytes-kb (:vendor-bytes footprint)) "\n"
-      "  bundled stdlib headers                           : "
+      "  bundled stdlib headers    : "
         (bytes-kb (:stdlib-header-bytes footprint)) "\n"
-      "  core.clj source                                  : "
+      "  core.clj source           : "
         (bytes-kb (:core-clj-bytes footprint)) "\n\n"
       "-- Bench suite tail (last 30 lines) --\n"
       bench-tail "\n")))
@@ -345,36 +382,52 @@
 (build-min-embed-floor!)
 
 (println)
-(let [bench-out      (run-bench-suite!)
-      bench-tail     (->> (str/split bench-out "\n")
-                          (take-last 30)
-                          (str/join "\n"))
-      cold-floor     (cold-start-stats
-                       "Floor min embed '(+ 1 2)'"
-                       [min-embed-floor-bin "(+ 1 2)"]
-                       cold-runs)
-      cold-min       (cold-start-stats
-                       "Sandbox min embed '(+ 1 2)'"
-                       [min-embed-bin "(+ 1 2)"]
-                       cold-runs)
-      cold-full-plus (cold-start-stats
-                       "Standalone full standalone -e '(+ 1 2)'"
-                       [mino-bin "-e" "(+ 1 2)"]
-                       cold-runs)
-      cold-full-nil  (cold-start-stats
-                       "Standalone full standalone -e nil"
-                       [mino-bin "-e" "nil"]
-                       cold-runs)
-      init-minimal   (in-process-stats "iters-minimal" init-runs)
-      init-core      (in-process-stats "iters" init-runs)
-      init-all       (in-process-stats "iters-all" init-runs)
-      foot           (footprint)
+(let [bench-out          (run-bench-suite!)
+      bench-tail         (->> (str/split bench-out "\n")
+                              (take-last 30)
+                              (str/join "\n"))
+      cold-floor         (cold-start-stats
+                           "Floor (no JIT) '(+ 1 2)'"
+                           [min-embed-floor-bin "(+ 1 2)"]
+                           cold-runs)
+      cold-floor-jit     (cold-start-stats
+                           "Floor +JIT '(+ 1 2)'"
+                           [min-embed-floor-jit-bin "(+ 1 2)"]
+                           cold-runs)
+      cold-min           (cold-start-stats
+                           "Sandbox (no JIT) '(+ 1 2)'"
+                           [min-embed-bin "(+ 1 2)"]
+                           cold-runs)
+      cold-min-jit       (cold-start-stats
+                           "Sandbox +JIT '(+ 1 2)'"
+                           [min-embed-jit-bin "(+ 1 2)"]
+                           cold-runs)
+      cold-full-plus     (cold-start-stats
+                           "Standalone +JIT -e '(+ 1 2)'"
+                           [mino-bin "-e" "(+ 1 2)"]
+                           cold-runs)
+      cold-full-nil      (cold-start-stats
+                           "Standalone +JIT -e nil"
+                           [mino-bin "-e" "nil"]
+                           cold-runs)
+      cold-full-lean     (when (file-exists? mino-lean-bin)
+                           (cold-start-stats
+                             "Standalone (mino-lean, no JIT) -e '(+ 1 2)'"
+                             [mino-lean-bin "-e" "(+ 1 2)"]
+                             cold-runs))
+      init-minimal       (in-process-stats "iters-minimal" init-runs)
+      init-core          (in-process-stats "iters" init-runs)
+      init-all           (in-process-stats "iters-all" init-runs)
+      foot               (footprint)
       summary {:hardware     (str/trim (:out (sh "uname" "-srm")))
                :mino-version (mino-version)
                :runs-cold    cold-runs
                :runs-init    init-runs
-               :cold-floor     cold-floor
-               :cold-min       cold-min
+               :cold-floor       cold-floor
+               :cold-floor-jit   cold-floor-jit
+               :cold-min         cold-min
+               :cold-min-jit     cold-min-jit
+               :cold-full-lean   cold-full-lean
                :cold-full-plus cold-full-plus
                :cold-full-nil  cold-full-nil
                :init-minimal   init-minimal
