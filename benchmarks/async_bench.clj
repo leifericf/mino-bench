@@ -19,46 +19,50 @@
 ;;      -- proxy for embed workloads; user code + async together
 ;;
 ;; Iteration counts calibrated so each entry runs long enough for GC
-;; share to be visible above clock noise.
+;; share to be visible above clock noise, but fast enough that the
+;; whole suite completes in well under a minute. The channel state
+;; lives in mino-side `atom`/`swap!` cells; the per-cycle swap! cost
+;; (state-map allocation + the body fn closure walk) makes 100k iters
+;; take minutes, far longer than the other benches in this repo.
 
 (defn run []
   ;; --- Suite 1: buffer + offer/poll (no scheduler) ---
   (bench/run-suite "async: buffered channel (offer!/poll!, no scheduler)"
-    [["offer!/poll! on (chan 1024)" 100000
+    [["offer!/poll! on (chan 1024)" 5000
       (let [ch (chan 1024)]
         (fn []
           (offer! ch 1)
           (poll! ch)))]
-     ["offer!/poll! on (chan 1)" 100000
+     ["offer!/poll! on (chan 1)" 5000
       (let [ch (chan 1)]
         (fn []
           (offer! ch 1)
           (poll! ch)))]
-     ["offer! full returns false" 100000
+     ["offer! full returns false" 5000
       (let [ch (chan 1)]
         (offer! ch :x)
         (fn [] (offer! ch :y)))]
-     ["poll! empty returns nil" 100000
+     ["poll! empty returns nil" 5000
       (let [ch (chan 1)]
         (fn [] (poll! ch)))]])
 
   ;; --- Suite 2: put!/take! + drain! on buffered channel ---
   (bench/run-suite "async: buffered put!/take! + drain!"
-    [["put!/take! on (chan 1) + drain!" 10000
+    [["put!/take! on (chan 1) + drain!" 2000
       (let [ch (chan 1)
             r  (atom nil)]
         (fn []
           (put! ch 1)
           (take! ch (fn [v] (reset! r v)))
           (drain!)))]
-     ["put!/take! on (chan 1024) + drain!" 10000
+     ["put!/take! on (chan 1024) + drain!" 2000
       (let [ch (chan 1024)
             r  (atom nil)]
         (fn []
           (put! ch 1)
           (take! ch (fn [v] (reset! r v)))
           (drain!)))]
-     ["put! with callback + drain!" 10000
+     ["put! with callback + drain!" 2000
       (let [ch (chan 1)
             r  (atom nil)]
         (fn []
@@ -68,7 +72,7 @@
 
   ;; --- Suite 3: go-block park/unpark (unbuffered hand-shake) ---
   (bench/run-suite "async: go-block park/unpark"
-    [["go (<! ch) with pending put + drain!" 1000
+    [["go (<! ch) with pending put + drain!" 100
       (fn []
         (let [ch (chan)
               r  (atom nil)]
@@ -76,14 +80,14 @@
           (let [out (go (<! ch))]
             (take! out (fn [v] (reset! r v)))
             (drain!))))]
-     ["go (>! ch v) paired with take! + drain!" 1000
+     ["go (>! ch v) paired with take! + drain!" 100
       (fn []
         (let [ch (chan)
               r  (atom nil)]
           (go (>! ch :v) :done)
           (take! ch (fn [v] (reset! r v)))
           (drain!)))]
-     ["go hand-shake: producer/consumer pair" 500
+     ["go hand-shake: producer/consumer pair" 100
       (fn []
         (let [ch (chan)
               r  (atom nil)]
@@ -91,7 +95,7 @@
           (let [out (go (<! ch))]
             (take! out (fn [v] (reset! r v)))
             (drain!))))]
-     ["go with 3 sequential <!" 500
+     ["go with 3 sequential <!" 100
       (fn []
         (let [a (chan 1) b (chan 1) c (chan 1)
               r (atom nil)]
@@ -103,21 +107,21 @@
 
   ;; --- Suite 4: alts! arbitration ---
   (bench/run-suite "async: alts! arbitration"
-    [["alts! over 1 ready channel" 10000
+    [["alts! over 1 ready channel" 2000
       (let [ch (chan 1024)]
         (fn []
           (offer! ch :v)
           (alts! [ch])))]
-     ["alts! over 8 channels, last ready" 5000
+     ["alts! over 8 channels, last ready" 1000
       (let [chs (vec (repeatedly 8 (fn [] (chan 1024))))
             hot (last chs)]
         (fn []
           (offer! hot :v)
           (alts! chs {:priority true})))]
-     ["alts! with :default (nothing ready)" 10000
+     ["alts! with :default (nothing ready)" 2000
       (let [ch (chan)]
         (fn [] (alts! [ch] {:default :nope})))]
-     ["alts! put op ready (buffered)" 10000
+     ["alts! put op ready (buffered)" 2000
       (let [ch (chan 1024)]
         (fn []
           (alts! [[ch :v]])

@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- `benchmarks/async_bench.clj` iteration counts recalibrated so the
+  suite completes in under two minutes. The mino-side `clojure.core.async`
+  layer wraps each channel in an `atom`/`swap!` cell; the per-cycle
+  state-map allocation dominates and made the 100k-iter rows take
+  many minutes per row, causing the suite to look like it had
+  silently exited after printing only the first header.
+  Suite 1 100000 → 5000, Suite 2 10000 → 2000, Suite 3 1000 → 100,
+  Suite 4 (alts!) 10000 → 2000, 5000 → 1000.
+
 - `benchmarks/jit_bench.clj` extended to cover the full CPJIT
   stencil set after v0.202.0: trivial shapes (v0.195.0), arith II
   (v0.197.0 / v0.198.0), unary + IK (v0.199.0), control flow
