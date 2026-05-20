@@ -11,6 +11,19 @@
   Suite 1 100000 → 5000, Suite 2 10000 → 2000, Suite 3 1000 → 100,
   Suite 4 (alts!) 10000 → 2000, 5000 → 1000.
 
+- `baselines/perf_baseline.edn` refreshed. Every row's `:ns` is
+  faster than the prior recording (cycle gains since the last
+  `MINO_PERF_GATE_RECORD=1` run); allocations are stable for every
+  row except `small-map`, which lands at 8624B/op vs the prior
+  6704B (29% growth from a perf cycle that moved small-map
+  literals through the BC compiler's `(hash-map ...)` constructor
+  lowering). The growth is local to the small-map row and the
+  underlying alloc shape is the value of compiling literal maps
+  to BC at all -- a const-pool-based lowering for non-empty
+  literal maps would close most of the gap but requires
+  cross-thread const-pool root tracking, deferred to a focused
+  cycle.
+
 - `benchmarks/jit_bench.clj` extended to cover the full CPJIT
   stencil set after v0.202.0: trivial shapes (v0.195.0), arith II
   (v0.197.0 / v0.198.0), unary + IK (v0.199.0), control flow
