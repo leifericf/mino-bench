@@ -74,6 +74,60 @@ jobs:
       - name: Corpus smoke (every seed through stdin reader)
         run: ./mino/mino task fuzz-smoke
 
+      - name: Install pinned Zig
+        # Must match the pinned zig in mino's lib/mino/tasks/builtin.clj.
+        uses: mlugg/setup-zig@v2
+        with:
+          version: 0.16.0
+
+      - name: Corpus smoke (every seed through every zig-built target)
+        # reader / print_roundtrip / eval / regex, built with the pinned
+        # zig cc under UBSan, each replaying the full corpus. The
+        # regression net for findings the time-boxed job below surfaced.
+        run: ./mino/mino task fuzz-smoke-targets
+
+  # Time-boxed mutation fuzz over every target with the zig-built
+  # persistent-loop runtime (UBSan). Complements the libFuzzer job: it
+  # runs the eval / print-roundtrip / regex targets the reader-only
+  # libFuzzer harness does not, on every host the pinned zig reaches,
+  # without depending on a host libFuzzer runtime. Schedule / dispatch
+  # only -- push and PR stop at the smoke jobs.
+  fuzz-targets:
+    name: fuzz-targets (zig UBSan, time-boxed)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install pinned Zig
+        uses: mlugg/setup-zig@v2
+        with:
+          version: 0.16.0
+
+      - name: Bootstrap mino (host cc; builds the task-runner binary)
+        run: |
+          cd mino && make
+
+      - name: Time-boxed mutation fuzz (each target)
+        # 900s per target keeps the four-target sweep inside the
+        # 90-minute cap with headroom. A crash fails the job and the
+        # reproducer is uploaded below; triage into mino/.local/BUGS.md.
+        env:
+          FUZZ_SECS: "900"
+          FUZZ_SEED: "0"
+        run: ./mino/mino task fuzz-run
+
+      - name: Upload crash reproducers on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-targets-artifacts
+          path: fuzz/artifacts/
+          if-no-files-found: ignore
+
   libfuzzer:
     name: libFuzzer (${{ github.event_name == 'schedule' && '24h' || 'short' }})
     runs-on: ubuntu-latest

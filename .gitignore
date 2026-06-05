@@ -29,6 +29,8 @@ Thumbs.db
 
 fuzz/fuzz_reader_asan
 fuzz/fuzz_reader_libfuzzer
+fuzz/bin/
+fuzz/artifacts/
 *.dSYM/
 
 # tests/ harness binaries (built by tests/refresh_perf.clj)

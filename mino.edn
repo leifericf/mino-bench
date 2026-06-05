@@ -60,4 +60,12 @@
                    :task mino.tasks.builtin/fuzz-build-libfuzzer}
   fuzz-smoke      {:doc  "Replay every corpus seed through the stdin-mode reader"
                    :deps [fuzz-build]
-                   :task mino.tasks.builtin/fuzz-smoke}}}
+                   :task mino.tasks.builtin/fuzz-smoke}
+  fuzz-build-targets {:doc  "Build all zig-cc UBSan fuzz targets (reader/print/eval/regex) over the persistent-loop runtime"
+                      :task mino.tasks.builtin/fuzz-build-targets}
+  fuzz-smoke-targets {:doc  "Replay every corpus seed through every fuzz target (CI regression net)"
+                      :deps [fuzz-build-targets]
+                      :task mino.tasks.builtin/fuzz-smoke-targets}
+  fuzz-run        {:doc  "Time-boxed mutation fuzz over every target; FUZZ_SECS / FUZZ_SEED env-tunable"
+                   :deps [fuzz-build-targets]
+                   :task mino.tasks.builtin/fuzz-run}}}

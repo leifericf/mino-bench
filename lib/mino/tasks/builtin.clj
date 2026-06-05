@@ -300,3 +300,113 @@
       (println (str "fuzz-smoke: all " (count seeds) " seeds parsed without crashing."))
       (do (println (str "fuzz-smoke: " (count @failed) " seed(s) crashed the reader."))
           (exit 1)))))
+
+;; ---- Multi-target fuzzing (zig-built persistent-loop runtime) ----
+;;
+;; fuzz/targets/<name>.c each implement mino_fuzz_init + mino_fuzz_one
+;; (fuzz/targets/fuzz_target.h) against mino.h only; fuzz/rt/loop.c is
+;; the shared runtime (replay + mutation-loop modes). Built with the
+;; pinned `zig cc` so the QA lane reproduces across machines -- the
+;; same toolchain the reproducible sanitizer lanes use. UBSan is on
+;; (zig ships its UBSan runtime); ASan is not (zig ships no ASan
+;; runtime, matching mino's sanitize-zig boundary), so the libFuzzer
+;; build below stays the host-clang coverage-guided + ASan path.
+
+(def ^:private fuzz-targets
+  ["reader" "print_roundtrip" "eval" "regex"])
+
+(def ^:private fuzz-cc
+  (str/split (or (getenv "FUZZ_CC") "zig cc") " "))
+
+(defn- fuzz-target-bin [name] (str "fuzz/bin/mino_fuzz_" name))
+
+(defn- build-fuzz-target [name]
+  (gen-core-header)
+  (sh! "mkdir" "-p" "fuzz/bin")
+  (let [flags (into ["-g" "-O1" "-std=c99" "-fno-omit-frame-pointer"
+                     "-fsanitize=undefined" "-fno-sanitize-recover=undefined"
+                     "-funwind-tables" "-Ifuzz/targets"]
+                    (str/split include-flags " "))
+        out   (fuzz-target-bin name)
+        args  (into (vec fuzz-cc)
+                    (concat flags
+                            ["-o" out
+                             "fuzz/rt/loop.c"
+                             (str "fuzz/targets/" name ".c")]
+                            mino-srcs
+                            libs
+                            ;; zig's default musl folds in pthread;
+                            ;; -lunwind covers the crash handler's
+                            ;; _Unwind_* symbols on non-glibc targets.
+                            (when (= (first fuzz-cc) "zig") ["-lunwind"])))]
+    (println (str "  building fuzz target " name))
+    (apply sh! args)
+    (println (str "  fuzz target -> " out))))
+
+(defn fuzz-build-targets
+  "Build every fuzz target (reader / print_roundtrip / eval / regex)
+   against the persistent-loop runtime with the pinned `zig cc` under
+   UBSan. Each binary takes `replay <file>...` or
+   `fuzz <corpus> [opts]` (see fuzz/rt/loop.c)."
+  []
+  (doseq [t fuzz-targets] (build-fuzz-target t))
+  (println (str "  fuzz-build-targets: " (count fuzz-targets) " targets OK")))
+
+(defn fuzz-smoke-targets
+  "Replay every fuzz/corpus seed through every target binary. A crash
+   in any target on any seed fails the lane. The reader corpus seeds
+   double as seeds for the other targets (the eval / round-trip / regex
+   targets all accept arbitrary bytes). CI-friendly: this is the
+   regression net even when the time-boxed fuzz lane is not running."
+  []
+  (doseq [t fuzz-targets]
+    (when-not (file-exists? (fuzz-target-bin t))
+      (build-fuzz-target t)))
+  (let [listing (sh! "ls" "fuzz/corpus")
+        seeds   (sort (filterv (fn [s] (and (not= s "")
+                                            (str/ends-with? s ".clj")))
+                               (str/split listing "\n")))
+        paths   (mapv (fn [s] (str "fuzz/corpus/" s)) seeds)
+        failed  (atom [])]
+    (doseq [t fuzz-targets]
+      (let [r (apply sh (concat [(fuzz-target-bin t) "replay"] paths))]
+        (if (= 0 (:exit r))
+          (println (str "  ok    " t " (" (count paths) " seeds)"))
+          (do (println (str "  FAIL  " t))
+              (println (:out r))
+              (swap! failed conj t)))))
+    (if (empty? @failed)
+      (println (str "fuzz-smoke-targets: all " (count fuzz-targets)
+                    " targets replayed " (count paths) " seeds cleanly."))
+      (do (println (str "fuzz-smoke-targets: " (count @failed)
+                        " target(s) crashed."))
+          (exit 1)))))
+
+(defn fuzz-run
+  "Time-boxed mutation fuzz over every target. FUZZ_SECS (default 60)
+   bounds each target's run; FUZZ_SEED (default 0) makes the run
+   deterministic. A crash leaves the reproducer at
+   fuzz/artifacts/<target>/.current and fails the lane. Intended for a
+   nightly time-boxed CI lane; crashers triage into mino/.local/BUGS.md."
+  []
+  (doseq [t fuzz-targets]
+    (when-not (file-exists? (fuzz-target-bin t))
+      (build-fuzz-target t)))
+  (let [secs (or (getenv "FUZZ_SECS") "60")
+        seed (or (getenv "FUZZ_SEED") "0")
+        failed (atom [])]
+    (doseq [t fuzz-targets]
+      (let [art (str "fuzz/artifacts/" t)]
+        (sh! "mkdir" "-p" art)
+        (println (str "  fuzzing " t " for " secs "s (seed " seed ")"))
+        (let [r (sh (fuzz-target-bin t) "fuzz" "fuzz/corpus"
+                    "--secs" secs "--seed" seed "--artifacts" art)]
+          (println (:out r))
+          (when-not (= 0 (:exit r))
+            (println (str "  CRASH in " t " -- reproducer at " art "/.current"))
+            (swap! failed conj t)))))
+    (if (empty? @failed)
+      (println (str "fuzz-run: " (count fuzz-targets)
+                    " targets survived " secs "s each."))
+      (do (println (str "fuzz-run: " (count @failed) " target(s) crashed."))
+          (exit 1)))))
