@@ -27,8 +27,8 @@ static double now_ms(void)
 
 int main(void)
 {
-    mino_state_t *S = mino_state_new();
-    mino_env_t *env = mino_env_new_default(S);
+    mino_state *S = mino_state_new();
+    mino_env *env = mino_env_new_default(S);
     double t0, t1;
 
     printf("mino performance profile\n");
@@ -37,19 +37,19 @@ int main(void)
     /* --- State/env lifecycle --- */
     printf("Lifecycle:\n");
     BENCH("mino_state_new + state_free", 1000, {
-        mino_state_t *s = mino_state_new();
+        mino_state *s = mino_state_new();
         mino_state_free(s);
     });
 
     BENCH("mino_state_new + mino_new + free", 100, {
-        mino_state_t *s = mino_state_new();
-        mino_env_t *e = mino_env_new_default(s);
+        mino_state *s = mino_state_new();
+        mino_env *e = mino_env_new_default(s);
         mino_env_free(s, e);
         mino_state_free(s);
     });
 
     BENCH("mino_env_clone + free", 1000, {
-        mino_env_t *c = mino_env_clone(S, env);
+        mino_env *c = mino_env_clone(S, env);
         mino_env_free(S, c);
     });
 
@@ -173,7 +173,7 @@ int main(void)
     /* --- Ref/GC --- */
     printf("\nRef/GC:\n");
     BENCH("mino_ref + deref + unref", 100000, {
-        mino_ref_t *r = mino_ref(S, mino_int(S, 42));
+        mino_ref *r = mino_ref_new(S, mino_int(S, 42));
         (void)mino_deref(r);
         mino_unref(S, r);
     });
@@ -181,10 +181,10 @@ int main(void)
     /* --- Clone --- */
     printf("\nClone:\n");
     {
-        mino_state_t *dst = mino_state_new();
-        mino_val_t *small = mino_eval_string(S, "[1 2 3 4 5]", env);
-        mino_val_t *medium = mino_eval_string(S, "(into [] (range 100))", env);
-        mino_val_t *nested = mino_eval_string(S,
+        mino_state *dst = mino_state_new();
+        mino_val *small = mino_eval_string(S, "[1 2 3 4 5]", env);
+        mino_val *medium = mino_eval_string(S, "(into [] (range 100))", env);
+        mino_val *nested = mino_eval_string(S,
             "{:a [1 2 3] :b {:c 4 :d [5 6]} :e \"hello\"}", env);
 
         BENCH("clone: 5-element vector", 10000, {
@@ -202,8 +202,8 @@ int main(void)
     /* --- REPL handle --- */
     printf("\nREPL handle:\n");
     {
-        mino_repl_t *repl = mino_repl_new(S, env);
-        mino_val_t *out;
+        mino_repl *repl = mino_repl_new(S, env);
+        mino_val *out;
         BENCH("repl_feed: (+ 1 2)", 10000, {
             mino_repl_feed(repl, "(+ 1 2)", &out);
         });

@@ -29,9 +29,9 @@ static double now_sec(void)
 /* Build a vector of [0, n) through vec_from_array and return ns/element. */
 static double bench_build(size_t n)
 {
-    mino_state_t *S = mino_state_new();
-    mino_val_t  **items = (mino_val_t **)malloc(n * sizeof(*items));
-    mino_val_t   *v;
+    mino_state *S = mino_state_new();
+    mino_val  **items = (mino_val **)malloc(n * sizeof(*items));
+    mino_val   *v;
     double        t0;
     double        elapsed;
     size_t        i;
@@ -55,10 +55,10 @@ static double bench_build(size_t n)
  * at pseudo-random indices. Reports ns/op. */
 static double bench_nth(size_t n, size_t reps)
 {
-    mino_state_t *S = mino_state_new();
+    mino_state *S = mino_state_new();
     char        expr[256];
-    mino_env_t *env = mino_env_new_default(S);
-    mino_val_t *form;
+    mino_env *env = mino_env_new_default(S);
+    mino_val *form;
     const char *end;
     double      t0;
     size_t      r;
@@ -76,7 +76,7 @@ static double bench_nth(size_t n, size_t reps)
         size_t      idx = (size_t)((unsigned long)r * 2654435761u) % n;
         char        prog[64];
         const char *e2;
-        mino_val_t *f2;
+        mino_val *f2;
         snprintf(prog, sizeof(prog), "(nth v %zu)", idx);
         f2 = mino_read(S, prog, &e2);
         (void)mino_eval(S, f2, env);
@@ -92,10 +92,10 @@ static double bench_nth(size_t n, size_t reps)
 /* Build v and time `reps` (assoc v idx 999) calls, each path-copying. */
 static double bench_assoc(size_t n, size_t reps)
 {
-    mino_state_t *S = mino_state_new();
+    mino_state *S = mino_state_new();
     char        expr[256];
-    mino_env_t *env = mino_env_new_default(S);
-    mino_val_t *form;
+    mino_env *env = mino_env_new_default(S);
+    mino_val *form;
     const char *end;
     double      t0;
     size_t      r;
@@ -113,7 +113,7 @@ static double bench_assoc(size_t n, size_t reps)
         size_t      idx = (size_t)((unsigned long)r * 2654435761u) % n;
         char        prog[96];
         const char *e2;
-        mino_val_t *f2;
+        mino_val *f2;
         snprintf(prog, sizeof(prog), "(assoc v %zu 999)", idx);
         f2 = mino_read(S, prog, &e2);
         (void)mino_eval(S, f2, env);

@@ -24,10 +24,10 @@ static double now_sec(void)
 /* Time (map inc (range n)) — builds a list and maps over it. ns/element. */
 static double bench_map(size_t n)
 {
-    mino_state_t *S = mino_state_new();
+    mino_state *S = mino_state_new();
     char        expr[256];
-    mino_env_t *env = mino_env_new_default(S);
-    mino_val_t *form;
+    mino_env *env = mino_env_new_default(S);
+    mino_val *form;
     const char *end;
     double      t0, elapsed;
     mino_eval_string(S, "(def inc (fn (x) (+ x 1)))", env);
@@ -47,10 +47,10 @@ static double bench_map(size_t n)
 /* Time (filter even? (range n)). ns/element. */
 static double bench_filter(size_t n)
 {
-    mino_state_t *S = mino_state_new();
+    mino_state *S = mino_state_new();
     char        expr[256];
-    mino_env_t *env = mino_env_new_default(S);
-    mino_val_t *form;
+    mino_env *env = mino_env_new_default(S);
+    mino_val *form;
     const char *end;
     double      t0, elapsed;
     mino_eval_string(S,
@@ -71,10 +71,10 @@ static double bench_filter(size_t n)
 /* Time (reduce + 0 (range n)). ns/element. */
 static double bench_reduce(size_t n)
 {
-    mino_state_t *S = mino_state_new();
+    mino_state *S = mino_state_new();
     char        expr[256];
-    mino_env_t *env = mino_env_new_default(S);
-    mino_val_t *form;
+    mino_env *env = mino_env_new_default(S);
+    mino_val *form;
     const char *end;
     double      t0, elapsed;
     snprintf(expr, sizeof(expr), "(reduce + 0 (range %zu))", n);
@@ -93,10 +93,10 @@ static double bench_reduce(size_t n)
 /* Time (sort (reverse (range n))). ns/element. */
 static double bench_sort(size_t n)
 {
-    mino_state_t *S = mino_state_new();
+    mino_state *S = mino_state_new();
     char        expr[256];
-    mino_env_t *env = mino_env_new_default(S);
-    mino_val_t *form;
+    mino_env *env = mino_env_new_default(S);
+    mino_val *form;
     const char *end;
     double      t0, elapsed;
     snprintf(expr, sizeof(expr), "(sort (reverse (range %zu)))", n);

@@ -75,7 +75,7 @@ static const char *kind_label(enum install_kind k)
     return "unknown";
 }
 
-static void install_for_kind(mino_state_t *S, mino_env_t *env,
+static void install_for_kind(mino_state *S, mino_env *env,
                               enum install_kind kind)
 {
     switch (kind) {
@@ -114,8 +114,8 @@ static void run_iters(int n, enum install_kind kind)
     double total = 0.0;
     for (i = 0; i < n; i++) {
         double t0 = now_ns();
-        mino_state_t *S = mino_state_new();
-        mino_env_t   *env = mino_env_new(S);
+        mino_state *S = mino_state_new();
+        mino_env   *env = mino_env_new(S);
         install_for_kind(S, env, kind);
         mino_env_free(S, env);
         mino_state_free(S);
@@ -144,10 +144,10 @@ static void run_iters(int n, enum install_kind kind)
  * against an absolute-minimum embed cold start. */
 static int eval_once(const char *expr)
 {
-    mino_state_t *S = mino_state_new();
-    mino_env_t   *env = mino_env_new(S);
+    mino_state *S = mino_state_new();
+    mino_env   *env = mino_env_new(S);
     mino_install_sandbox(S, env);
-    mino_val_t *r = mino_eval_string(S, expr, env);
+    mino_val *r = mino_eval_string(S, expr, env);
     int rc = (r == NULL) ? 1 : 0;
     if (r != NULL) {
         mino_println(S, r);

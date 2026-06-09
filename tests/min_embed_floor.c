@@ -25,10 +25,10 @@ int main(int argc, char **argv)
         fprintf(stderr, "usage: %s EXPR\n", argv[0]);
         return 2;
     }
-    mino_state_t *S = mino_state_new();
-    mino_env_t   *env = mino_env_new(S);
+    mino_state *S = mino_state_new();
+    mino_env   *env = mino_env_new(S);
     mino_install_minimal(S, env);
-    mino_val_t   *r = mino_eval_string(S, argv[1], env);
+    mino_val   *r = mino_eval_string(S, argv[1], env);
     int rc = (r == NULL) ? 1 : 0;
     if (r != NULL) {
         mino_println(S, r);

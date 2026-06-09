@@ -25,13 +25,13 @@ static int fuzz_one(const char *data, size_t size)
     /* Read all forms until EOF or error. Each fuzz_one call gets a
      * fresh mino_state so coverage across iterations does not compound. */
     {
-        mino_state_t *S = mino_state_new();
+        mino_state *S = mino_state_new();
         if (S == NULL) { free(buf); return 0; }
         {
             const char *pos = buf;
             while (*pos != '\0') {
                 const char *end = NULL;
-                mino_val_t *val = mino_read(S, pos, &end);
+                mino_val *val = mino_read(S, pos, &end);
                 if (val == NULL) {
                     if (end != NULL && end > pos) {
                         /* EOF: only whitespace/comments remaining. */
