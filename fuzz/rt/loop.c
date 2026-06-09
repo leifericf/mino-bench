@@ -28,6 +28,14 @@
  * run replays identically. No wall-clock seeding.
  */
 
+/* sigaction / struct sigaction / SIGALRM are POSIX, hidden under a
+ * strict -std=c99 compile on glibc unless a feature-test macro is set
+ * before the first libc header (mirrors mino's own per-file
+ * convention, e.g. src/prim/proc.c). */
+#ifndef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 200809L
+#endif
+
 #include "fuzz_target.h"
 
 #include <signal.h>
