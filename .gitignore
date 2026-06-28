@@ -10,6 +10,8 @@ src/map_bench
 src/seq_bench
 src/perf_profile
 fuzz/fuzz_reader
+fuzz/fuzz_image
+fuzz/fuzz_store
 mino-bin
 mino/src/core_mino.h
 

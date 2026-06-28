@@ -276,6 +276,47 @@
     (println (str "  " (str/join " " args)))
     (apply sh! args)))
 
+(def ^:private fuzz-targets-c
+  "Static stdin-mode fuzz targets under fuzz/. Each is a single .c file
+   built against the amalgamated mino source set. Targets must exit 0
+   on every input -- crash-free is the contract."
+  ["fuzz_reader" "fuzz_image" "fuzz_store"])
+
+(defn fuzz-build-all
+  "Build every stdin-mode fuzz target in fuzz/."
+  []
+  (gen-core-header)
+  (doseq [target fuzz-targets-c]
+    (let [src (str "fuzz/" target ".c")
+          out (str "fuzz/" target)
+          args (into [cc] (concat cflags ldflags
+                                  ["-DFUZZ_STDIN" "-o" out src]
+                                  (mapv identity mino-srcs) libs))]
+      (println (str "  " (str/join " " args)))
+      (apply sh! args))))
+
+(defn fuzz-build-image
+  "Build the SLAD image loader fuzz target."
+  []
+  (gen-core-header)
+  (let [args (into [cc] (concat cflags ldflags
+                                ["-DFUZZ_STDIN" "-o" "fuzz/fuzz_image"
+                                 "fuzz/fuzz_image.c"]
+                                (mapv identity mino-srcs) libs))]
+    (println (str "  " (str/join " " args)))
+    (apply sh! args)))
+
+(defn fuzz-build-store
+  "Build the mino.store tx-data fuzz target."
+  []
+  (gen-core-header)
+  (let [args (into [cc] (concat cflags ldflags
+                                ["-DFUZZ_STDIN" "-o" "fuzz/fuzz_store"
+                                 "fuzz/fuzz_store.c"]
+                                (mapv identity mino-srcs) libs))]
+    (println (str "  " (str/join " " args)))
+    (apply sh! args)))
+
 (defn fuzz-smoke
   "Replay every corpus seed through the stdin-mode fuzz reader and
    report ok/FAIL per file. Meant for CI: a seed that crashes the
@@ -300,6 +341,80 @@
       (println (str "fuzz-smoke: all " (count seeds) " seeds parsed without crashing."))
       (do (println (str "fuzz-smoke: " (count @failed) " seed(s) crashed the reader."))
           (exit 1)))))
+
+(defn fuzz-smoke-image
+  "Smoke the SLAD image loader fuzz target against a small set of
+   deliberately corrupt inputs. Each input must exit 0 (no crash).
+   Builds the target first if missing."
+  []
+  (gen-core-header)
+  (when (not (file-exists? "fuzz/fuzz_image")) (fuzz-build-image))
+  ;; Generate a fresh valid image as one of the seeds, plus a few
+  ;; adversarial shapes that have regressed before (truncated v1,
+  ;; bad magic, CRC mismatch, mid-body garbage).
+  (let [tmp-dir ".local/fuzz-image-seeds"
+        _       (do (when (file-exists? tmp-dir) (rm-rf tmp-dir))
+                    (mkdir-p tmp-dir))
+        valid   (str tmp-dir "/valid.img")
+        _       (sh "sh" "-c"
+                    (str "./mino/mino -e \"(save-image \\\"" valid "\\\")\""))
+        content (slurp valid)
+        bad-crc (clojure.string/replace content #"CRC32 [0-9a-f]+\n"
+                                        "CRC32 deadbeef\n")
+        trunc   (subs content 0 (max 20 (quot (count content) 2)))
+        seeds   {"valid"     content
+                 "truncated" trunc
+                 "bad-crc"   bad-crc
+                 "wrong-magic" "WRONG-MAGIC/9\nGARBAGE\n"
+                 "empty"     ""
+                 "garbage"   "NOT AN IMAGE\n%%%bad\n"}]
+    (doseq [[name data] seeds]
+      (let [path (str tmp-dir "/" name ".img")
+            _    (spit path data)
+            r    (sh "sh" "-c" (str "./fuzz/fuzz_image < " path))]
+        (if (= 0 (:exit r))
+          (println (str "  ok    fuzz-image " name))
+          (println (str "  FAIL  fuzz-image " name " (exit " (:exit r) ")")))))
+    (println "fuzz-smoke-image: done")))
+
+(defn fuzz-smoke-store
+  "Smoke the mino.store tx-data fuzz target against a small set of
+   inputs covering valid, malformed, and adversarial shapes."
+  []
+  (gen-core-header)
+  (when (not (file-exists? "fuzz/fuzz_store")) (fuzz-build-store))
+  (let [seeds {"valid-add"       "[:db/add 1 :name \"Alice\"]"
+               "valid-map"       "{1 {:name \"Bob\" :age 30}}"
+               "valid-nested"    "([:db/add 1 :a 1] [:db/add 2 :b 2])"
+               "arity-3-add"     "[:db/add 1 :name]"
+               "arity-5-add"     "[:db/add 1 :name \"X\" :extra]"
+               "unknown-op"      "[:db/foo 1 :name \"X\"]"
+               "garbage"         "((((not even clojure"
+               "empty"           ""
+               "random-bytes"    (apply str (map (fn [_] (char (+ 32 (rand 95))))
+                                                 (range 200)))}
+        tmp-dir ".local/fuzz-store-seeds"]
+    (when (not (file-exists? tmp-dir)) (mkdir-p tmp-dir))
+    (doseq [[name data] seeds]
+      ;; Pipe via a per-seed tmp file rather than `echo -n '...'` so
+      ;; bytes that collide with shell quoting (`'`, `;`, `$`, etc.)
+      ;; pass through verbatim.
+      (let [path (str tmp-dir "/" name ".seed")
+            _    (spit path data)
+            r    (sh "sh" "-c" (str "./fuzz/fuzz_store < " path))]
+        (if (= 0 (:exit r))
+          (println (str "  ok    fuzz-store " name))
+          (println (str "  FAIL  fuzz-store " name " (exit " (:exit r) ")")))))
+    (println "fuzz-smoke-store: done")))
+
+(defn fuzz-smoke-all
+  "Run fuzz-smoke (reader) + fuzz-smoke-image + fuzz-smoke-store.
+   Used by nightly CI as the crash-free contract across every
+   fuzz target."
+  []
+  (fuzz-smoke)
+  (fuzz-smoke-image)
+  (fuzz-smoke-store))
 
 ;; ---- Multi-target fuzzing (zig-built persistent-loop runtime) ----
 ;;

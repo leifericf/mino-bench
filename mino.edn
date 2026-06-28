@@ -61,6 +61,20 @@
   fuzz-smoke      {:doc  "Replay every corpus seed through the stdin-mode reader"
                    :deps [fuzz-build]
                    :task mino.tasks.builtin/fuzz-smoke}
+  fuzz-build-image {:doc  "Build the SLAD image loader fuzz target (stdin mode)"
+                    :task mino.tasks.builtin/fuzz-build-image}
+  fuzz-build-store {:doc  "Build the mino.store tx-data fuzz target (stdin mode)"
+                    :task mino.tasks.builtin/fuzz-build-store}
+  fuzz-build-all   {:doc  "Build every stdin-mode fuzz target (reader, image, store)"
+                    :task mino.tasks.builtin/fuzz-build-all}
+  fuzz-smoke-image {:doc  "Smoke the image loader against valid + corrupt seeds"
+                    :deps [fuzz-build-image]
+                    :task mino.tasks.builtin/fuzz-smoke-image}
+  fuzz-smoke-store {:doc  "Smoke the store tx-data parser against valid + malformed seeds"
+                    :deps [fuzz-build-store]
+                    :task mino.tasks.builtin/fuzz-smoke-store}
+  fuzz-smoke-all   {:doc  "All three fuzz-smoke variants: reader + image + store"
+                    :task mino.tasks.builtin/fuzz-smoke-all}
   fuzz-build-targets {:doc  "Build all zig-cc UBSan fuzz targets (reader/print/eval/regex) over the persistent-loop runtime"
                       :task mino.tasks.builtin/fuzz-build-targets}
   fuzz-smoke-targets {:doc  "Replay every corpus seed through every fuzz target (CI regression net)"
