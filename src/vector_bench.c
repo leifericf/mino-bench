@@ -58,16 +58,13 @@ static double bench_nth(size_t n, size_t reps)
     mino_state *S = mino_state_new();
     char        expr[256];
     mino_env *env = mino_env_new_default(S);
-    mino_val *form;
-    const char *end;
     double      t0;
     size_t      r;
     snprintf(expr, sizeof(expr),
              "(def v (loop (i 0 v []) "
              "  (if (< i %zu) (recur (+ i 1) (conj v i)) v)))",
              n);
-    form = mino_read(S, expr, &end);
-    if (form == NULL || mino_eval(S, form, env) == NULL) {
+    if (mino_eval_string(S, expr, env) == NULL) {
         fprintf(stderr, "bench_nth build failed: %s\n", mino_last_error(S));
         exit(1);
     }
@@ -75,11 +72,8 @@ static double bench_nth(size_t n, size_t reps)
     for (r = 0; r < reps; r++) {
         size_t      idx = (size_t)((unsigned long)r * 2654435761u) % n;
         char        prog[64];
-        const char *e2;
-        mino_val *f2;
         snprintf(prog, sizeof(prog), "(nth v %zu)", idx);
-        f2 = mino_read(S, prog, &e2);
-        (void)mino_eval(S, f2, env);
+        (void)mino_eval_string(S, prog, env);
     }
     {
         double elapsed = now_sec() - t0;
@@ -95,16 +89,13 @@ static double bench_assoc(size_t n, size_t reps)
     mino_state *S = mino_state_new();
     char        expr[256];
     mino_env *env = mino_env_new_default(S);
-    mino_val *form;
-    const char *end;
     double      t0;
     size_t      r;
     snprintf(expr, sizeof(expr),
              "(def v (loop (i 0 v []) "
              "  (if (< i %zu) (recur (+ i 1) (conj v i)) v)))",
              n);
-    form = mino_read(S, expr, &end);
-    if (form == NULL || mino_eval(S, form, env) == NULL) {
+    if (mino_eval_string(S, expr, env) == NULL) {
         fprintf(stderr, "bench_assoc build failed: %s\n", mino_last_error(S));
         exit(1);
     }
@@ -112,11 +103,8 @@ static double bench_assoc(size_t n, size_t reps)
     for (r = 0; r < reps; r++) {
         size_t      idx = (size_t)((unsigned long)r * 2654435761u) % n;
         char        prog[96];
-        const char *e2;
-        mino_val *f2;
         snprintf(prog, sizeof(prog), "(assoc v %zu 999)", idx);
-        f2 = mino_read(S, prog, &e2);
-        (void)mino_eval(S, f2, env);
+        (void)mino_eval_string(S, prog, env);
     }
     {
         double elapsed = now_sec() - t0;
