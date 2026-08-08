@@ -35,8 +35,8 @@ static void fresh_state(void)
     env = mino_env_new(S);
     if (env == NULL) abort();
     mino_install(S, env, FUZZ_CAPS);
-    mino_set_limit(S, MINO_LIMIT_STEPS, STEP_LIMIT);
-    mino_set_limit(S, MINO_LIMIT_HEAP, HEAP_LIMIT);
+    mino_set_option(S, MINO_OPT_LIMIT_STEPS, STEP_LIMIT);
+    mino_set_option(S, MINO_OPT_LIMIT_HEAP, HEAP_LIMIT);
 }
 
 void mino_fuzz_init(void)

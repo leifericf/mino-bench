@@ -38,7 +38,7 @@ static void fresh_state(void)
     env = mino_env_new(S);
     if (env == NULL) abort();
     mino_install(S, env, MINO_CAP_FLOOR | MINO_CAP_REGEX);
-    mino_set_limit(S, MINO_LIMIT_STEPS, STEP_LIMIT);
+    mino_set_option(S, MINO_OPT_LIMIT_STEPS, STEP_LIMIT);
 }
 
 void mino_fuzz_init(void)
