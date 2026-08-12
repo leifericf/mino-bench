@@ -58,6 +58,12 @@
                    :task mino.tasks.builtin/fuzz-build}
   fuzz-build-libfuzzer {:doc  "Build libFuzzer-instrumented reader (requires clang + fuzzer sanitizer)"
                    :task mino.tasks.builtin/fuzz-build-libfuzzer}
+  fuzz-build-libfuzzer-image {:doc  "Build libFuzzer-instrumented SLAD image loader"
+                   :task mino.tasks.builtin/fuzz-build-libfuzzer-image}
+  fuzz-build-libfuzzer-store {:doc  "Build libFuzzer-instrumented store tx-data parser"
+                   :task mino.tasks.builtin/fuzz-build-libfuzzer-store}
+  fuzz-build-libfuzzer-all {:doc  "Build every libFuzzer target (reader, image, store)"
+                   :task mino.tasks.builtin/fuzz-build-libfuzzer-all}
   fuzz-smoke      {:doc  "Replay every corpus seed through the stdin-mode reader"
                    :deps [fuzz-build]
                    :task mino.tasks.builtin/fuzz-smoke}

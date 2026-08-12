@@ -1,0 +1,14 @@
+MINO-IMAGE/1
+# created 1189053366
+# current-ns user
+
+VALUES
+1 E - 0
+
+META
+
+ROOTS
+NS user 1 0
+ALIAS user deps mino.deps
+CURSOR user
+CRC32 11470d9c

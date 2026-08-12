@@ -276,6 +276,46 @@
     (println (str "  " (str/join " " args)))
     (apply sh! args)))
 
+(def ^:private libfuzzer-flags
+  "Shared clang flags for every libFuzzer-instrumented target. Mirrors
+   the reader target's flag set so every deserializer surface gets the
+   same fuzzer + address + ub sanitizer coverage."
+  (into ["-g" "-O1" "-std=c99" "-Wall" "-Wextra"]
+        (concat (str/split include-flags " ")
+                ["-fsanitize=fuzzer,address,undefined"
+                 "-fno-omit-frame-pointer"])))
+
+(defn- build-libfuzzer-target
+  "Build one libFuzzer-instrumented target. SRC is the .c path under
+   fuzz/, OUT is the output binary path under fuzz/."
+  [src out]
+  (gen-core-header)
+  (let [cc-fuzz (or (getenv "CC") "clang")
+        args    (into [cc-fuzz] (concat libfuzzer-flags
+                                        ["-o" out src]
+                                        (mapv identity mino-srcs) libs))]
+    (println (str "  " (str/join " " args)))
+    (apply sh! args)))
+
+(defn fuzz-build-libfuzzer-image
+  "Build the libFuzzer-instrumented SLAD image loader target. Requires
+   clang with -fsanitize=fuzzer,address (the nightly fuzz job installs
+   it via apt). The output runs libFuzzer over a corpus directory."
+  []
+  (build-libfuzzer-target "fuzz/fuzz_image.c" "fuzz/fuzz_image_libfuzzer"))
+
+(defn fuzz-build-libfuzzer-store
+  "Build the libFuzzer-instrumented mino.store tx-data parser target."
+  []
+  (build-libfuzzer-target "fuzz/fuzz_store.c" "fuzz/fuzz_store_libfuzzer"))
+
+(defn fuzz-build-libfuzzer-all
+  "Build every libFuzzer-instrumented target: reader, image, store."
+  []
+  (fuzz-build-libfuzzer)
+  (fuzz-build-libfuzzer-image)
+  (fuzz-build-libfuzzer-store))
+
 (def ^:private fuzz-targets-c
   "Static stdin-mode fuzz targets under fuzz/. Each is a single .c file
    built against the amalgamated mino source set. Targets must exit 0

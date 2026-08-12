@@ -34,6 +34,16 @@ jobs:
       - name: Corpus smoke (every seed through stdin reader)
         run: ./mino/mino task fuzz-smoke
 
+      - name: Smoke the SLAD image loader (valid + corrupt seeds)
+        # The trusted-artifact deserializers (ADR 12): every push
+        # replays known-bad shapes (truncated, bad magic, CRC mismatch)
+        # so a regression in the image loader is a red signal, not a
+        # silent nightly crash hours later.
+        run: ./mino/mino task fuzz-smoke-image
+
+      - name: Smoke the store tx-data parser (valid + malformed seeds)
+        run: ./mino/mino task fuzz-smoke-store
+
       - name: Install pinned Zig
         # Must match the pinned zig in mino's lib/mino/tasks/builtin.clj.
         uses: mlugg/setup-zig@v2
@@ -114,21 +124,35 @@ jobs:
         # single source of truth and can't drift.
         run: cd mino && make
 
-      - name: Build libFuzzer target
+      - name: Build libFuzzer targets (reader, image, store)
         env:
           CC: clang
-        run: ./mino/mino task fuzz-build-libfuzzer
+        run: ./mino/mino task fuzz-build-libfuzzer-all
 
-      - name: Run libFuzzer
+      - name: Run libFuzzer (each target gets a third of the budget)
+        # The reader, the SLAD image loader, and the store tx-data
+        # parser each get an equal slice of the duration so every
+        # trusted-artifact deserializer earns continuous coverage,
+        # not just the reader. Each target keeps its own artifact
+        # prefix so a crash is attributable to the surface that found
+        # it.
         run: |
-          DURATION="${{ github.event.inputs.duration || '86400' }}"
-          mkdir -p fuzz/artifacts
+          TOTAL="${{ github.event.inputs.duration || '86400' }}"
+          PER=$((TOTAL / 3))
+          echo "budget: total=${TOTAL}s, per-target=${PER}s"
+          mkdir -p fuzz/artifacts/reader fuzz/artifacts/image fuzz/artifacts/store
+          echo ":: reader ($PER s)"
           ./fuzz/fuzz_reader_libfuzzer \
-            -max_total_time=${DURATION} \
-            -max_len=65536 \
-            -print_final_stats=1 \
-            -artifact_prefix=fuzz/artifacts/ \
-            fuzz/corpus
+            -max_total_time=${PER} -max_len=65536 -print_final_stats=1 \
+            -artifact_prefix=fuzz/artifacts/reader/ fuzz/corpus
+          echo ":: image ($PER s)"
+          ./fuzz/fuzz_image_libfuzzer \
+            -max_total_time=${PER} -max_len=65536 -print_final_stats=1 \
+            -artifact_prefix=fuzz/artifacts/image/ fuzz/corpus_image
+          echo ":: store ($PER s)"
+          ./fuzz/fuzz_store_libfuzzer \
+            -max_total_time=${PER} -max_len=65536 -print_final_stats=1 \
+            -artifact_prefix=fuzz/artifacts/store/ fuzz/corpus_store
 
       - name: Upload crash artifacts on failure
         if: failure()
