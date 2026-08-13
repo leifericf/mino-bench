@@ -456,6 +456,28 @@
   (fuzz-smoke-image)
   (fuzz-smoke-store))
 
+(defn fuzz-summary
+  "Run every fuzz smoke target via subprocess, parse the ok/FAIL
+   lines, and emit output/fuzz-results.edn. Shape:
+   {:targets [{:name 'fuzz-smoke' :seeds N :passed N :failed N} ...]}"
+  []
+  (let [targets ["fuzz-smoke" "fuzz-smoke-image" "fuzz-smoke-store"]
+        results (vec
+                  (for [target targets]
+                    (let [r (sh "sh" "-c"
+                                (str "./mino/mino task " target " 2>&1"))
+                          lines (str/split (:out r "") "\n")
+                          ok-count (count (filter #(str/includes? % "  ok  ") lines))
+                          fail-count (count (filter #(str/includes? % "  FAIL") lines))]
+                      {:name target :seeds (+ ok-count fail-count)
+                       :passed ok-count :failed fail-count})))]
+    (sh! "mkdir" "-p" "output")
+    (spit "output/fuzz-results.edn" (pr-str {:targets results}))
+    (println "fuzz-summary: output/fuzz-results.edn")
+    (doseq [t results]
+      (println (str "  " (:name t) ": " (:passed t) "/" (:seeds t)
+                    " passed" (when (pos? (:failed t)) (str ", " (:failed t) " FAILED")))))))
+
 ;; ---- Multi-target fuzzing (zig-built persistent-loop runtime) ----
 ;;
 ;; fuzz/targets/<name>.c each implement mino_fuzz_init + mino_fuzz_one

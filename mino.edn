@@ -81,6 +81,8 @@
                     :task mino.tasks.builtin/fuzz-smoke-store}
   fuzz-smoke-all   {:doc  "All three fuzz-smoke variants: reader + image + store"
                     :task mino.tasks.builtin/fuzz-smoke-all}
+  fuzz-summary     {:doc  "Run all smoke targets and emit output/fuzz-results.edn"
+                    :task mino.tasks.builtin/fuzz-summary}
   fuzz-build-targets {:doc  "Build all zig-cc UBSan fuzz targets (reader/print/eval/regex) over the persistent-loop runtime"
                       :task mino.tasks.builtin/fuzz-build-targets}
   fuzz-smoke-targets {:doc  "Replay every corpus seed through every fuzz target (CI regression net)"
