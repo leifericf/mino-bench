@@ -21,10 +21,18 @@
 
 (def ^:private cc      (or (getenv "CC") "cc"))
 (def ^:private include-flags
+  ;; Must track mino's Makefile INCDIRS verbatim (mino/Makefile),
+  ;; prefixed with mino/ for the submodule checkout. A vendor dir
+  ;; missing here surfaces only once a target compiles far enough to
+  ;; reach it -- e.g. miniz's upstream headers include miniz_export.h
+  ;; from -Imino/src/vendor/miniz -- so keep this in lockstep with the
+  ;; canonical list rather than trimming it to what one target needs.
   (str "-Imino/src -Imino/src/public -Imino/src/runtime -Imino/src/gc"
-       " -Imino/src/eval -Imino/src/collections -Imino/src/prim"
-       " -Imino/src/async -Imino/src/interop"
-       " -Imino/src/diag -Imino/src/vendor/imath"))
+       " -Imino/src/eval -Imino/src/values -Imino/src/collections"
+       " -Imino/src/prim -Imino/src/async -Imino/src/interop"
+       " -Imino/src/diag -Imino/src/vendor/imath"
+       " -Imino/src/vendor/bearssl -Imino/src/vendor/bearssl/inc"
+       " -Imino/src/vendor/miniz -Imino/src/vendor/miniz/upstream"))
 (def ^:private cflags  (str/split (or (getenv "CFLAGS")
                                   (str "-std=c99 -Wall -Wpedantic -Wextra -O2 "
                                        include-flags)) " "))
@@ -34,21 +42,40 @@
 
 (def ^:private mino-bin "mino/mino")
 
-;; Mino library sources: discover every .c file under mino/src/ at
-;; task-load time. Matches whatever the pinned submodule SHA carries
-;; without requiring this list to be edited when the C tree moves.
+;; Mino library sources: the .c files mino's own Makefile compiles,
+;; mirrored so the fuzz build links exactly the runtime binary mino
+;; ships. mino/Makefile's SRCS globs each directory NON-recursively,
+;; so this filters file-seq to that same directory set rather than
+;; sweeping every .c under mino/src.
 ;;
-;; Exclude src/eval/bc/stencils/*.c: those files use
-;; __attribute__((musttail)) return ... which gcc doesn't support and
-;; clang only supports under specific options. They're meant for
-;; compile-and-extract by `gen-stencils` (output bytes baked into
-;; stencils_<triple>.h headers), NOT linked into a runtime binary.
-;; The host build (mino's Makefile) drops them implicitly via its
-;; SRCS glob too.
+;; Two directories are vendored in full but built as a single amalgam
+;; TU at their top level -- src/vendor/bearssl/bearssl_client.c pulls
+;; in the whole BearSSL tree, src/vendor/miniz/miniz_core.c the whole
+;; miniz tree. Their upstream units under src/vendor/bearssl/src/** and
+;; src/vendor/miniz/upstream/** are NOT compiled directly: those files
+;; need their own private -Iinner include paths and would duplicate
+;; every symbol the amalgam already defines. A blanket recursive glob
+;; swept them in and broke the build (BearSSL's inner.h not found).
+;;
+;; src/eval/bc/stencils/*.c is likewise excluded (absent from the dir
+;; set): those use __attribute__((musttail)) meant for compile-and-
+;; extract by gen-stencils, never linked into a runtime binary. The
+;; host Makefile drops them the same way.
+(def ^:private mino-src-dirs
+  #{"mino/src/eval" "mino/src/eval/bc" "mino/src/eval/bc/jit"
+    "mino/src/diag" "mino/src/runtime" "mino/src/gc" "mino/src/public"
+    "mino/src/values" "mino/src/collections" "mino/src/prim"
+    "mino/src/interop" "mino/src/regex" "mino/src/async"
+    "mino/src/vendor/imath" "mino/src/vendor/bearssl"
+    "mino/src/vendor/miniz"})
+
+(defn- parent-dir [p]
+  (str/join "/" (butlast (str/split p #"/"))))
+
 (def ^:private mino-srcs
   (vec (filter (fn [p]
                  (and (str/ends-with? p ".c")
-                      (not (str/starts-with? p "mino/src/eval/bc/stencils/"))))
+                      (contains? mino-src-dirs (parent-dir p))))
                (file-seq "mino/src"))))
 
 (def ^:private mino-bin-srcs (conj mino-srcs "mino/main.c"))
