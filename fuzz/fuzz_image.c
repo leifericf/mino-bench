@@ -16,6 +16,9 @@
  * contract is "no crash, no leak" — return value is ignored.
  */
 
+/* mkstemp lives behind the POSIX feature guard under -std=c99. */
+#define _POSIX_C_SOURCE 200809L
+
 #include "mino.h"
 #include <stdio.h>
 #include <stdlib.h>
