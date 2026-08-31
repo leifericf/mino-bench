@@ -97,6 +97,10 @@ jobs:
           name: fuzz-targets-artifacts
           path: fuzz/artifacts/
           if-no-files-found: ignore
+          # loop.c writes the in-flight input to <artifacts>/.current, a
+          # dotfile; without this the upload skips it and a crash ships
+          # no reproducer.
+          include-hidden-files: true
 
   libfuzzer:
     name: libFuzzer (${{ github.event_name == 'schedule' && '24h' || 'short' }})
