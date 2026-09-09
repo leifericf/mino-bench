@@ -4,23 +4,17 @@ Benchmarks, stress tests, and fuzz testing for [mino](https://github.com/leiferi
 
 ## Bootstrap
 
+The submodule's Makefile generates the bundled-source headers and links
+the `mino` binary in one step. That binary then drives every other task.
+
 ```
 git submodule update --init
-cd mino
-printf 'static const char *core_mino_src =\n' > src/core_mino.h
-sed 's/\\/\\\\/g; s/"/\\"/g; s/^/    "/; s/$/\\n"/' src/core.clj >> src/core_mino.h
-printf '    ;\n' >> src/core_mino.h
-cc -std=c99 -O2 \
-  -Isrc -Isrc/public -Isrc/runtime -Isrc/gc -Isrc/eval \
-  -Isrc/collections -Isrc/prim -Isrc/async -Isrc/interop \
-  -Isrc/diag -Isrc/vendor/imath \
-  -o mino \
-  src/public/*.c src/runtime/*.c src/gc/*.c src/eval/*.c \
-  src/collections/*.c src/prim/*.c src/async/*.c src/interop/*.c \
-  src/regex/*.c src/diag/*.c src/vendor/imath/*.c \
-  main.c -lm
-cd ..
+cd mino && make && cd ..
 ```
+
+After this first build, `./mino/mino task build` does the incremental work:
+it recompiles the submodule sources with the same include and JIT flags the
+Makefile uses, then links the C benchmark binaries.
 
 ## Tasks
 
