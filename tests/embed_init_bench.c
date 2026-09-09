@@ -26,13 +26,10 @@
  *                                        # Clojure caps on, no I/O / fs / proc /
  *                                        # stm / agent / async / host).
  *
- * Source path (link against the same object files that build mino itself):
- *   cc -std=c99 -O2 -Imino/src -Imino/src/public -Imino/src/runtime \
- *       -Imino/src/gc -Imino/src/eval -Imino/src/collections \
- *       -Imino/src/prim -Imino/src/async -Imino/src/interop \
- *       -Imino/src/diag -Imino/src/vendor/imath \
+ * Build against the mino amalgamation (dist/mino.h is the only header):
+ *   cc -std=c99 -O2 -Imino/dist \
  *       -o tests/embed_init_bench tests/embed_init_bench.c \
- *       mino/src/<everything>.o -lm -lpthread
+ *       mino/dist/mino.c -lm -lpthread
  */
 
 #define _POSIX_C_SOURCE 200809L

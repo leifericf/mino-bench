@@ -3,241 +3,88 @@
 ;; mino-bench's local task runner. This file shadows the bundled
 ;; mino.tasks.builtin namespace because:
 ;;   - tasks here run from the mino-bench/ working directory and
-;;     resolve sources via the mino/ submodule prefix;
+;;     link against the mino/ submodule's amalgamation;
 ;;   - mino-bench needs bench-/fuzz-/stress-only tasks
 ;;     (bench-c-vec, perf-gate, fuzz-build, stress-sharded, etc.)
 ;;     that don't belong in the upstream task table.
 ;;
-;; The shape of bundled-stdlib is kept in lockstep with upstream's
-;; mino/lib/mino/tasks/builtin.clj so that future mino releases
-;; that thread additional fields through stay drop-in compatible.
+;; The build consumes the mino amalgamation (mino/dist/mino.{c,h}), the
+;; single embedding boundary mino ships (ADR-62). Every C artifact here
+;; compiles against dist/mino.o and includes dist/mino.h only; nothing
+;; reaches into mino's private src/** tree. A mino C-tree reorg is a
+;; no-op for this build once the submodule pin is bumped.
 ;;
 ;; First-time bootstrap: `cd mino && make && cd ..`. After that,
-;; every rebuild goes through `./mino/mino task build`.
+;; every rebuild goes through `./mino/mino task build`, which
+;; regenerates the amalgamation only when the submodule pin changes.
 
 (require '[clojure.string :as str])
+(require '[mino.tasks.amalgam :as amalgam])
 
-;; Build configuration
+;;;; Build configuration
 
 (def ^:private cc      (or (getenv "CC") "cc"))
-(def ^:private include-flags
-  ;; Must track mino's Makefile INCDIRS verbatim (mino/Makefile),
-  ;; prefixed with mino/ for the submodule checkout. A vendor dir
-  ;; missing here surfaces only once a target compiles far enough to
-  ;; reach it -- e.g. miniz's upstream headers include miniz_export.h
-  ;; from -Imino/src/vendor/miniz -- so keep this in lockstep with the
-  ;; canonical list rather than trimming it to what one target needs.
-  (str "-Imino/src -Imino/src/generated -Imino/src/public"
-       " -Imino/src/runtime -Imino/src/gc -Imino/src/eval"
-       " -Imino/src/read -Imino/src/print -Imino/src/names -Imino/src/state"
-       " -Imino/src/values -Imino/src/collections"
-       " -Imino/src/prim -Imino/src/async -Imino/src/interop"
-       " -Imino/src/diag -Imino/src/vendor/imath"
-       " -Imino/src/vendor/bearssl -Imino/src/vendor/bearssl/inc"
-       " -Imino/src/vendor/miniz -Imino/src/vendor/miniz/upstream"))
+
+;; The amalgamation is the sole mino include root: dist/mino.h is the
+;; only mino header any consumer source includes.
+(def ^:private include-flags "-Imino/dist")
+
 ;; -DMINO_CPJIT=1 and -fno-strict-aliasing mirror mino's Makefile CFLAGS:
 ;; the JIT define keeps benches on the same runtime config CI ships, and
-;; the aliasing flag matches the runtime's type-punning assumptions.
+;; the aliasing flag matches the runtime's type-punning assumptions. The
+;; amalgam object is compiled with the same posture so its JIT is present.
 (def ^:private cflags  (str/split (or (getenv "CFLAGS")
                                   (str "-std=c99 -Wall -Wpedantic -Wextra -O2"
                                        " -fno-strict-aliasing -DMINO_CPJIT=1 "
                                        include-flags)) " "))
 (def ^:private ldflags (let [v (or (getenv "LDFLAGS") "")]
                          (if (= v "") [] (str/split v " "))))
-(def ^:private libs    (str/split (or (getenv "LIBS") "-lm") " "))
+(def ^:private libs    (str/split (or (getenv "LIBS") "-lm -lpthread") " "))
 
 (def ^:private mino-bin "mino/mino")
 
-;; Mino library sources: the .c files mino's own Makefile compiles,
-;; mirrored so the fuzz build links exactly the runtime binary mino
-;; ships. mino/Makefile's SRCS globs each directory NON-recursively,
-;; so this filters file-seq to that same directory set rather than
-;; sweeping every .c under mino/src.
-;;
-;; Two directories are vendored in full but built as a single amalgam
-;; TU at their top level -- src/vendor/bearssl/bearssl_client.c pulls
-;; in the whole BearSSL tree, src/vendor/miniz/miniz_core.c the whole
-;; miniz tree. Their upstream units under src/vendor/bearssl/src/** and
-;; src/vendor/miniz/upstream/** are NOT compiled directly: those files
-;; need their own private -Iinner include paths and would duplicate
-;; every symbol the amalgam already defines. A blanket recursive glob
-;; swept them in and broke the build (BearSSL's inner.h not found).
-;;
-;; src/eval/bc/stencils/*.c is likewise excluded (absent from the dir
-;; set): those use __attribute__((musttail)) meant for compile-and-
-;; extract by gen-stencils, never linked into a runtime binary. The
-;; host Makefile drops them the same way.
-(def ^:private mino-src-dirs
-  #{"mino/src/eval" "mino/src/eval/bc" "mino/src/eval/bc/jit"
-    "mino/src/read" "mino/src/print" "mino/src/diag"
-    "mino/src/names" "mino/src/state" "mino/src/gc" "mino/src/public"
-    "mino/src/values" "mino/src/collections"
-    "mino/src/interop" "mino/src/regex" "mino/src/async"
-    "mino/src/vendor/imath" "mino/src/vendor/bearssl"
-    "mino/src/vendor/miniz"})
+;; Amalgamation materialization is the mino/-shipped shared helper
+;; mino.tasks.amalgam (ADR 62): its dist-c / dist-obj / dist-pin paths,
+;; stale? mtime guard, and ensure-dist! recipe live in one place that
+;; ships with mino, so a C-tree reorg in the submodule never drifts a
+;; copy here. This runner passes its own cc/cflags (JIT posture) into
+;; amalgam/ensure-dist! so the amalgam object keeps -DMINO_CPJIT=1.
 
-(defn- parent-dir [p]
-  (str/join "/" (butlast (str/split p #"/"))))
-
-;; The prim tree is one level of domain subdirs (src/prim/<domain>/*.c),
-;; matching mino/Makefile's `src/prim/*/*.c` glob. There are no .c files
-;; directly in src/prim, and nothing deeper is compiled.
-(defn- prim-domain-src? [p]
-  (and (str/starts-with? p "mino/src/prim/")
-       (= 5 (count (str/split p #"/")))))
-
-(def ^:private mino-srcs
-  (vec (filter (fn [p]
-                 (and (str/ends-with? p ".c")
-                      (or (contains? mino-src-dirs (parent-dir p))
-                          (prim-domain-src? p))))
-               (file-seq "mino/src"))))
-
-;; src/cli/*.c carries main(); it links into the mino binary but must
-;; stay out of mino-srcs so each C benchmark links its own main against
-;; the library objects.
-(def ^:private mino-cli-srcs
-  (vec (filter (fn [p]
-                 (and (str/ends-with? p ".c")
-                      (= "mino/src/cli" (parent-dir p))))
-               (file-seq "mino/src"))))
-
-(def ^:private mino-bin-srcs (into mino-srcs mino-cli-srcs))
-
-;; C benchmark binaries
+;; C benchmark binaries. Each supplies its own main() and links against
+;; the amalgam object.
 (def ^:private c-benchmarks
   {"src/vector_bench" "src/vector_bench.c"
    "src/map_bench"    "src/map_bench.c"
    "src/seq_bench"    "src/seq_bench.c"
    "src/perf_profile" "src/perf_profile.c"})
 
-(defn- src->obj [src]
-  (str (subs src 0 (- (count src) 2)) ".o"))
-
-(defn- stale?
-  "True if output does not exist or any input is newer."
-  [inputs output]
-  (let [out-mtime (file-mtime output)]
-    (if (nil? out-mtime)
-      true
-      (some #(let [in-mtime (file-mtime %)]
-               (and in-mtime (> in-mtime out-mtime)))
-            inputs))))
-
-;; ---- gen-core-header / gen-stdlib-headers ----
-;; install_stdlib.c #includes one C string-literal header per bundled
-;; namespace; these are gitignored generated artifacts, regenerated
-;; whenever the source .clj is newer than the existing header.
-
-(defn- escape-source [src]
-  (let [src     (if (str/ends-with? src "\n")
-                  (subs src 0 (- (count src) 1))
-                  src)
-        escaped (-> src
-                    (str/replace "\\" "\\\\")
-                    (str/replace "\"" "\\\""))]
-    (str/replace escaped "\n" "\\n\"\n    \"")))
-
-(defn- gen-core-header []
-  (when (stale? ["mino/src/core.clj"] "mino/src/core_mino.h")
-    (let [body (escape-source (slurp "mino/src/core.clj"))]
-      (spit "mino/src/core_mino.h"
-            (str "static const char *core_mino_src =\n    \""
-                 body "\\n\"\n    ;\n")))
-    (println "  gen-core-header: mino/src/core_mino.h updated")))
-
-;; Schema parity with upstream's bundled-stdlib in
-;; mino/lib/mino/tasks/builtin.clj — `[src-path ns-name c-symbol]`.
-;; mino-bench keeps its own copy (and its own gen-stdlib-headers
-;; helper) because tasks here run from the mino-bench/ working
-;; directory and need to find sources via the mino/ submodule prefix.
-;; ns-name is unused locally but kept so future upstream evolutions
-;; that thread it through stay drop-in compatible.
-(def ^:private bundled-stdlib
-  [["lib/clojure/string.clj"           "clojure.string"           "lib_clojure_string"]
-   ["lib/clojure/set.clj"              "clojure.set"              "lib_clojure_set"]
-   ["lib/clojure/walk.clj"             "clojure.walk"             "lib_clojure_walk"]
-   ["lib/clojure/edn.clj"              "clojure.edn"              "lib_clojure_edn"]
-   ["lib/clojure/pprint.clj"           "clojure.pprint"           "lib_clojure_pprint"]
-   ["lib/clojure/zip.clj"              "clojure.zip"              "lib_clojure_zip"]
-   ["lib/clojure/data.clj"             "clojure.data"             "lib_clojure_data"]
-   ["lib/clojure/test.clj"             "clojure.test"             "lib_clojure_test"]
-   ["lib/clojure/template.clj"         "clojure.template"         "lib_clojure_template"]
-   ["lib/clojure/repl.clj"             "clojure.repl"             "lib_clojure_repl"]
-   ["lib/clojure/stacktrace.clj"       "clojure.stacktrace"       "lib_clojure_stacktrace"]
-   ["lib/clojure/datafy.clj"           "clojure.datafy"           "lib_clojure_datafy"]
-   ["lib/clojure/core/protocols.clj"   "clojure.core.protocols"   "lib_clojure_core_protocols"]
-   ["lib/clojure/instant.clj"          "clojure.instant"          "lib_clojure_instant"]
-   ["lib/clojure/spec/alpha.clj"       "clojure.spec.alpha"       "lib_clojure_spec_alpha"]
-   ["lib/clojure/core/specs/alpha.clj" "clojure.core.specs.alpha" "lib_clojure_core_specs_alpha"]
-   ["lib/mino/deps.clj"                "mino.deps"                "lib_mino_deps"]
-   ["lib/mino/tasks.clj"               "mino.tasks"               "lib_mino_tasks"]
-   ["lib/mino/tasks/builtin.clj"       "mino.tasks.builtin"       "lib_mino_tasks_builtin"]])
-
-(defn- gen-stdlib-headers []
-  (doseq [[src-path _ns-name c-symbol] bundled-stdlib]
-    (let [src-full (str "mino/" src-path)
-          out-path (str "mino/src/" c-symbol ".h")]
-      (when (stale? [src-full] out-path)
-        (spit out-path
-              (str "static const char *" c-symbol "_src =\n    \""
-                   (escape-source (slurp src-full))
-                   "\\n\"\n    ;\n"))
-        (println (str "  gen-stdlib-headers: " out-path " updated"))))))
-
-;; ---- Build ----
+;;;; Build
 
 (defn build
-  "Build the mino binary and C benchmark binaries."
+  "Build the mino binary and C benchmark binaries against the amalgam."
   []
-  (gen-core-header)
-  (gen-stdlib-headers)
-  (let [compiled (atom 0)]
-    ;; Compile all .o files
-    (doseq [src mino-bin-srcs]
-      (let [obj (src->obj src)]
-        (when (stale? [src] obj)
-          (let [args (into [cc] (concat cflags ["-c" "-o" obj src]))]
-            (println (str "  " (str/join " " args)))
-            (apply sh! args)
-            (swap! compiled inc)))))
-    ;; Link mino binary inside submodule (binary_dir = mino/ for resolver)
-    (let [objs      (mapv src->obj mino-bin-srcs)
-          need-link (or (> @compiled 0) (not (file-exists? mino-bin)))]
-      (when need-link
-        (let [args (into [cc] (concat cflags ldflags ["-o" mino-bin] objs libs))]
+  (amalgam/ensure-dist! cc cflags)
+  (let [built (atom 0)]
+    (doseq [[bin src] c-benchmarks]
+      (when (or (not (file-exists? bin))
+                (amalgam/stale? [src amalgam/dist-obj] bin))
+        (let [args (into [cc] (concat cflags ldflags
+                                      ["-o" bin src amalgam/dist-obj] libs))]
           (println (str "  " (str/join " " args)))
-          (apply sh! args))))
-    ;; Build C benchmark binaries
-    (let [mino-objs (mapv src->obj mino-srcs)]
-      (doseq [[bin src] c-benchmarks]
-        (when (or (> @compiled 0) (not (file-exists? bin)) (stale? [src] bin))
-          (let [args (into [cc] (concat cflags ldflags ["-o" bin src] mino-objs libs))]
-            (println (str "  " (str/join " " args)))
-            (apply sh! args)))))
-    (when (= @compiled 0)
-      (println "  nothing to compile"))))
+          (apply sh! args)
+          (swap! built inc))))
+    (when (zero? @built)
+      (println "  bench binaries up to date"))))
 
 (defn clean
   "Remove build artifacts (never touches the mino/ submodule checkout)."
   []
-  ;; Object files compiled from submodule sources
-  (doseq [src mino-bin-srcs]
-    (let [obj (src->obj src)]
-      (when (file-exists? obj) (rm-rf obj))))
-  ;; Generated headers inside submodule (core + bundled stdlib)
-  (when (file-exists? "mino/src/core_mino.h") (rm-rf "mino/src/core_mino.h"))
-  (doseq [[_ _ c-symbol] bundled-stdlib]
-    (let [hpath (str "mino/src/" c-symbol ".h")]
-      (when (file-exists? hpath) (rm-rf hpath))))
-  ;; Mino binary inside submodule
-  (when (file-exists? mino-bin) (rm-rf mino-bin))
   (doseq [[bin _] c-benchmarks]
     (when (file-exists? bin) (rm-rf bin)))
   (when (file-exists? "fuzz/fuzz_reader") (rm-rf "fuzz/fuzz_reader"))
   (println "  cleaned"))
 
-;; ---- C-level benchmarks ----
+;;;; C-level benchmarks
 
 (defn bench-c
   "Run all C-level benchmarks."
@@ -252,14 +99,14 @@
 (defn bench-c-seq  [] (println (sh! "./src/seq_bench")))
 (defn bench-c-perf [] (println (sh! "./src/perf_profile")))
 
-;; ---- Mino-level benchmarks ----
+;;;; Mino-level benchmarks
 
 (defn bench
   "Run all mino-level benchmarks."
   []
   (println (sh! mino-bin "benchmarks/run_all.clj")))
 
-;; ---- Perf regression gate ----
+;;;; Perf regression gate
 
 (defn perf-gate
   "Run the perf regression gate against the pinned baseline. Exits non-zero
@@ -277,7 +124,7 @@
     (println (:out r))
     (exit (:exit r))))
 
-;; ---- Stress tests ----
+;;;; Stress tests
 
 (defn stress
   "Run GC stress test."
@@ -293,16 +140,42 @@
       (flush)
       (println (sh! "env" "MINO_GC_STRESS=1" mino-bin shard)))))
 
-;; ---- Fuzz ----
+;;;; Fuzz
+;; Targets compile the amalgam TU under the target's sanitizer flags; crash-free is the contract.
+
+(defn- build-stdin-fuzz-target!
+  "Build one stdin-mode fuzz target. TARGET is the base name (e.g.
+   \"fuzz_reader\"); src and out are derived under fuzz/."
+  [target]
+  (amalgam/ensure-dist! cc cflags)
+  (let [src  (str "fuzz/" target ".c")
+        out  (str "fuzz/" target)
+        args (into [cc] (concat cflags ldflags
+                                ["-DFUZZ_STDIN" "-o" out src amalgam/dist-c]
+                                libs))]
+    (println (str "  " (str/join " " args)))
+    (apply sh! args)))
 
 (defn fuzz-build
   "Build the fuzz reader binary."
   []
-  (gen-core-header)
-  (let [args (into [cc] (concat cflags ldflags
-                                ["-DFUZZ_STDIN" "-o" "fuzz/fuzz_reader"
-                                 "fuzz/fuzz_reader.c"]
-                                (mapv identity mino-srcs) libs))]
+  (build-stdin-fuzz-target! "fuzz_reader"))
+
+(def ^:private libfuzzer-flags
+  "Shared clang flags for every libFuzzer-instrumented target. The
+   fuzzer + address + ub sanitizers cover every deserializer surface."
+  (into ["-g" "-O1" "-std=c99" "-Wall" "-Wextra" include-flags]
+        ["-fsanitize=fuzzer,address,undefined"
+         "-fno-omit-frame-pointer"]))
+
+(defn- build-libfuzzer-target
+  "Build one libFuzzer-instrumented target. SRC is the .c path under
+   fuzz/, OUT is the output binary path under fuzz/."
+  [src out]
+  (amalgam/ensure-dist! cc cflags)
+  (let [args (into [fuzz-cc-libfuzzer] (concat libfuzzer-flags
+                                               ["-o" out src amalgam/dist-c]
+                                               libs))]
     (println (str "  " (str/join " " args)))
     (apply sh! args)))
 
@@ -311,42 +184,7 @@
    with -fsanitize=fuzzer,address available. The output binary accepts
    libFuzzer's -runs, -max_total_time, and corpus-directory arguments."
   []
-  (gen-core-header)
-  (let [cc-fuzz (or (getenv "CC") "clang")
-        ;; Reuse the same -I set as the plain fuzz build so internal
-        ;; headers (`diag.h`, `host_threads.h`, etc.) resolve from
-        ;; their nested directories under mino/src.
-        flags   (into ["-g" "-O1" "-std=c99" "-Wall" "-Wextra"]
-                      (concat (str/split include-flags " ")
-                              ["-fsanitize=fuzzer,address,undefined"
-                               "-fno-omit-frame-pointer"]))
-        args    (into [cc-fuzz] (concat flags
-                                        ["-o" "fuzz/fuzz_reader_libfuzzer"
-                                         "fuzz/fuzz_reader.c"]
-                                        (mapv identity mino-srcs) libs))]
-    (println (str "  " (str/join " " args)))
-    (apply sh! args)))
-
-(def ^:private libfuzzer-flags
-  "Shared clang flags for every libFuzzer-instrumented target. Mirrors
-   the reader target's flag set so every deserializer surface gets the
-   same fuzzer + address + ub sanitizer coverage."
-  (into ["-g" "-O1" "-std=c99" "-Wall" "-Wextra"]
-        (concat (str/split include-flags " ")
-                ["-fsanitize=fuzzer,address,undefined"
-                 "-fno-omit-frame-pointer"])))
-
-(defn- build-libfuzzer-target
-  "Build one libFuzzer-instrumented target. SRC is the .c path under
-   fuzz/, OUT is the output binary path under fuzz/."
-  [src out]
-  (gen-core-header)
-  (let [cc-fuzz (or (getenv "CC") "clang")
-        args    (into [cc-fuzz] (concat libfuzzer-flags
-                                        ["-o" out src]
-                                        (mapv identity mino-srcs) libs))]
-    (println (str "  " (str/join " " args)))
-    (apply sh! args)))
+  (build-libfuzzer-target "fuzz/fuzz_reader.c" "fuzz/fuzz_reader_libfuzzer"))
 
 (defn fuzz-build-libfuzzer-image
   "Build the libFuzzer-instrumented SLAD image loader target. Requires
@@ -369,62 +207,44 @@
 
 (def ^:private fuzz-targets-c
   "Static stdin-mode fuzz targets under fuzz/. Each is a single .c file
-   built against the amalgamated mino source set. Targets must exit 0
-   on every input -- crash-free is the contract."
+   built against the amalgam TU. Targets must exit 0 on every input --
+   crash-free is the contract."
   ["fuzz_reader" "fuzz_image" "fuzz_store"])
 
 (defn fuzz-build-all
   "Build every stdin-mode fuzz target in fuzz/."
   []
-  (gen-core-header)
   (doseq [target fuzz-targets-c]
-    (let [src (str "fuzz/" target ".c")
-          out (str "fuzz/" target)
-          args (into [cc] (concat cflags ldflags
-                                  ["-DFUZZ_STDIN" "-o" out src]
-                                  (mapv identity mino-srcs) libs))]
-      (println (str "  " (str/join " " args)))
-      (apply sh! args))))
+    (build-stdin-fuzz-target! target)))
 
 (defn fuzz-build-image
   "Build the SLAD image loader fuzz target."
   []
-  (gen-core-header)
-  (let [args (into [cc] (concat cflags ldflags
-                                ["-DFUZZ_STDIN" "-o" "fuzz/fuzz_image"
-                                 "fuzz/fuzz_image.c"]
-                                (mapv identity mino-srcs) libs))]
-    (println (str "  " (str/join " " args)))
-    (apply sh! args)))
+  (build-stdin-fuzz-target! "fuzz_image"))
 
 (defn fuzz-build-store
   "Build the mino.store tx-data fuzz target."
   []
-  (gen-core-header)
-  (let [args (into [cc] (concat cflags ldflags
-                                ["-DFUZZ_STDIN" "-o" "fuzz/fuzz_store"
-                                 "fuzz/fuzz_store.c"]
-                                (mapv identity mino-srcs) libs))]
-    (println (str "  " (str/join " " args)))
-    (apply sh! args)))
+  (build-stdin-fuzz-target! "fuzz_store"))
 
 (defn fuzz-smoke
   "Replay every corpus seed through the stdin-mode fuzz reader and
    report ok/FAIL per file. Meant for CI: a seed that crashes the
    reader is a regression even if the libFuzzer job is not running."
   []
-  (gen-core-header)
-  ;; Build stdin-mode reader if missing.
-  (when (not (file-exists? "fuzz/fuzz_reader"))
+  (when-not (file-exists? "fuzz/fuzz_reader")
     (fuzz-build))
+  (when-not (file-exists? "fuzz/corpus")
+    (println "fuzz-smoke: fuzz/corpus directory does not exist")
+    (exit 1))
   (let [listing (sh! "ls" "fuzz/corpus")
-        seeds   (sort (filterv (fn [s] (and (not= s "") (str/ends-with? s ".clj")))
+        seeds   (sort (filterv (fn [s] (and (seq s) (str/ends-with? s ".clj")))
                                (str/split listing "\n")))
         failed  (atom [])]
     (doseq [seed seeds]
       (let [path (str "fuzz/corpus/" seed)
             r    (sh "sh" "-c" (str "./fuzz/fuzz_reader < " path))]
-        (if (= 0 (:exit r))
+        (if (zero? (:exit r))
           (println (str "  ok    " path))
           (do (println (str "  FAIL  " path))
               (swap! failed conj path)))))
@@ -438,42 +258,40 @@
    deliberately corrupt inputs. Each input must exit 0 (no crash).
    Builds the target first if missing."
   []
-  (gen-core-header)
-  (when (not (file-exists? "fuzz/fuzz_image")) (fuzz-build-image))
+  (when-not (file-exists? "fuzz/fuzz_image") (fuzz-build-image))
   ;; Generate a fresh valid image as one of the seeds, plus a few
   ;; adversarial shapes that have regressed before (truncated v1,
   ;; bad magic, CRC mismatch, mid-body garbage).
-  (let [tmp-dir ".local/fuzz-image-seeds"
-        _       (do (when (file-exists? tmp-dir) (rm-rf tmp-dir))
-                    (mkdir-p tmp-dir))
-        valid   (str tmp-dir "/valid.img")
-        _       (sh "sh" "-c"
-                    (str "./mino/mino -e \"(save-image \\\"" valid "\\\")\""))
-        content (slurp valid)
-        bad-crc (clojure.string/replace content #"CRC32 [0-9a-f]+\n"
-                                        "CRC32 deadbeef\n")
-        trunc   (subs content 0 (max 20 (quot (count content) 2)))
-        seeds   {"valid"     content
-                 "truncated" trunc
-                 "bad-crc"   bad-crc
-                 "wrong-magic" "WRONG-MAGIC/9\nGARBAGE\n"
-                 "empty"     ""
-                 "garbage"   "NOT AN IMAGE\n%%%bad\n"}]
-    (doseq [[name data] seeds]
-      (let [path (str tmp-dir "/" name ".img")
-            _    (spit path data)
-            r    (sh "sh" "-c" (str "./fuzz/fuzz_image < " path))]
-        (if (= 0 (:exit r))
-          (println (str "  ok    fuzz-image " name))
-          (println (str "  FAIL  fuzz-image " name " (exit " (:exit r) ")")))))
-    (println "fuzz-smoke-image: done")))
+  (let [tmp-dir ".local/fuzz-image-seeds"]
+    (when (file-exists? tmp-dir) (rm-rf tmp-dir))
+    (mkdir-p tmp-dir)
+    (let [valid (str tmp-dir "/valid.img")]
+      (sh "sh" "-c"
+          (str "./mino/mino -e \"(save-image \\\"" valid "\\\")\""))
+      (let [content (slurp valid)
+            bad-crc (str/replace content #"CRC32 [0-9a-f]+\n"
+                                 "CRC32 deadbeef\n")
+            trunc   (subs content 0 (max 20 (quot (count content) 2)))
+            seeds   {"valid"       content
+                     "truncated"   trunc
+                     "bad-crc"     bad-crc
+                     "wrong-magic" "WRONG-MAGIC/9\nGARBAGE\n"
+                     "empty"       ""
+                     "garbage"     "NOT AN IMAGE\n%%%bad\n"}]
+        (doseq [[seed-name data] seeds]
+          (let [path (str tmp-dir "/" seed-name ".img")]
+            (spit path data)
+            (let [r (sh "sh" "-c" (str "./fuzz/fuzz_image < " path))]
+              (if (zero? (:exit r))
+                (println (str "  ok    fuzz-image " seed-name))
+                (println (str "  FAIL  fuzz-image " seed-name " (exit " (:exit r) ")"))))))
+        (println "fuzz-smoke-image: done")))))
 
 (defn fuzz-smoke-store
   "Smoke the mino.store tx-data fuzz target against a small set of
    inputs covering valid, malformed, and adversarial shapes."
   []
-  (gen-core-header)
-  (when (not (file-exists? "fuzz/fuzz_store")) (fuzz-build-store))
+  (when-not (file-exists? "fuzz/fuzz_store") (fuzz-build-store))
   (let [seeds {"valid-add"       "[:db/add 1 :name \"Alice\"]"
                "valid-map"       "{1 {:name \"Bob\" :age 30}}"
                "valid-nested"    "([:db/add 1 :a 1] [:db/add 2 :b 2])"
@@ -485,17 +303,17 @@
                "random-bytes"    (apply str (map (fn [_] (char (+ 32 (rand 95))))
                                                  (range 200)))}
         tmp-dir ".local/fuzz-store-seeds"]
-    (when (not (file-exists? tmp-dir)) (mkdir-p tmp-dir))
-    (doseq [[name data] seeds]
+    (when-not (file-exists? tmp-dir) (mkdir-p tmp-dir))
+    (doseq [[seed-name data] seeds]
       ;; Pipe via a per-seed tmp file rather than `echo -n '...'` so
       ;; bytes that collide with shell quoting (`'`, `;`, `$`, etc.)
       ;; pass through verbatim.
-      (let [path (str tmp-dir "/" name ".seed")
+      (let [path (str tmp-dir "/" seed-name ".seed")
             _    (spit path data)
             r    (sh "sh" "-c" (str "./fuzz/fuzz_store < " path))]
-        (if (= 0 (:exit r))
-          (println (str "  ok    fuzz-store " name))
-          (println (str "  FAIL  fuzz-store " name " (exit " (:exit r) ")")))))
+        (if (zero? (:exit r))
+          (println (str "  ok    fuzz-store " seed-name))
+          (println (str "  FAIL  fuzz-store " seed-name " (exit " (:exit r) ")")))))
     (println "fuzz-smoke-store: done")))
 
 (defn fuzz-smoke-all
@@ -517,7 +335,7 @@
                   (for [target targets]
                     (let [r (sh "sh" "-c"
                                 (str "./mino/mino task " target " 2>&1"))
-                          lines (str/split (:out r "") "\n")
+                          lines (str/split (:out r) "\n")
                           ok-count (count (filter #(str/includes? % "  ok  ") lines))
                           fail-count (count (filter #(str/includes? % "  FAIL") lines))]
                       {:name target :seeds (+ ok-count fail-count)
@@ -529,7 +347,7 @@
       (println (str "  " (:name t) ": " (:passed t) "/" (:seeds t)
                     " passed" (when (pos? (:failed t)) (str ", " (:failed t) " FAILED")))))))
 
-;; ---- Multi-target fuzzing (zig-built persistent-loop runtime) ----
+;;;; Multi-target fuzzing (zig-built persistent-loop runtime)
 ;;
 ;; fuzz/targets/<name>.c each implement mino_fuzz_init + mino_fuzz_one
 ;; (fuzz/targets/fuzz_target.h) against mino.h only; fuzz/rt/loop.c is
@@ -538,7 +356,7 @@
 ;; same toolchain the reproducible sanitizer lanes use. UBSan is on
 ;; (zig ships its UBSan runtime); ASan is not (zig ships no ASan
 ;; runtime, matching mino's sanitize-zig boundary), so the libFuzzer
-;; build below stays the host-clang coverage-guided + ASan path.
+;; build above stays the host-clang coverage-guided + ASan path.
 
 (def ^:private fuzz-targets
   ["reader" "print_roundtrip" "eval" "regex"])
@@ -546,22 +364,26 @@
 (def ^:private fuzz-cc
   (str/split (or (getenv "FUZZ_CC") "zig cc") " "))
 
+;; Separate CC for libFuzzer targets: always defaults to clang because
+;; gcc does not support -fsanitize=fuzzer. Set FUZZ_CC_LIBFUZZER to
+;; override (e.g. a versioned clang-18) without affecting CC or FUZZ_CC.
+(def ^:private fuzz-cc-libfuzzer
+  (or (getenv "FUZZ_CC_LIBFUZZER") "clang"))
+
 (defn- fuzz-target-bin [name] (str "fuzz/bin/mino_fuzz_" name))
 
 (defn- build-fuzz-target [name]
-  (gen-core-header)
   (sh! "mkdir" "-p" "fuzz/bin")
-  (let [flags (into ["-g" "-O1" "-std=c99" "-fno-omit-frame-pointer"
-                     "-fsanitize=undefined" "-fno-sanitize-recover=undefined"
-                     "-funwind-tables" "-Ifuzz/targets"]
-                    (str/split include-flags " "))
+  (let [flags ["-g" "-O1" "-std=c99" "-fno-omit-frame-pointer"
+               "-fsanitize=undefined" "-fno-sanitize-recover=undefined"
+               "-funwind-tables" "-Ifuzz/targets" include-flags]
         out   (fuzz-target-bin name)
         args  (into (vec fuzz-cc)
                     (concat flags
                             ["-o" out
                              "fuzz/rt/loop.c"
-                             (str "fuzz/targets/" name ".c")]
-                            mino-srcs
+                             (str "fuzz/targets/" name ".c")
+                             amalgam/dist-c]
                             libs
                             ;; zig's default musl folds in pthread;
                             ;; -lunwind covers the crash handler's
@@ -577,6 +399,7 @@
    UBSan. Each binary takes `replay <file>...` or
    `fuzz <corpus> [opts]` (see fuzz/rt/loop.c)."
   []
+  (amalgam/ensure-dist! cc cflags)
   (doseq [t fuzz-targets] (build-fuzz-target t))
   (println (str "  fuzz-build-targets: " (count fuzz-targets) " targets OK")))
 
@@ -587,18 +410,22 @@
    targets all accept arbitrary bytes). CI-friendly: this is the
    regression net even when the time-boxed fuzz lane is not running."
   []
+  (amalgam/ensure-dist! cc cflags)
   (doseq [t fuzz-targets]
     (when-not (file-exists? (fuzz-target-bin t))
       (build-fuzz-target t)))
+  (when-not (file-exists? "fuzz/corpus")
+    (println "fuzz-smoke-targets: fuzz/corpus directory does not exist")
+    (exit 1))
   (let [listing (sh! "ls" "fuzz/corpus")
-        seeds   (sort (filterv (fn [s] (and (not= s "")
+        seeds   (sort (filterv (fn [s] (and (seq s)
                                             (str/ends-with? s ".clj")))
                                (str/split listing "\n")))
         paths   (mapv (fn [s] (str "fuzz/corpus/" s)) seeds)
         failed  (atom [])]
     (doseq [t fuzz-targets]
       (let [r (apply sh (concat [(fuzz-target-bin t) "replay"] paths))]
-        (if (= 0 (:exit r))
+        (if (zero? (:exit r))
           (println (str "  ok    " t " (" (count paths) " seeds)"))
           (do (println (str "  FAIL  " t))
               (println (:out r))
@@ -617,6 +444,7 @@
    fuzz/artifacts/<target>/.current and fails the lane. Intended for a
    nightly time-boxed CI lane; crashers triage into mino/.local/BUGS.md."
   []
+  (amalgam/ensure-dist! cc cflags)
   (doseq [t fuzz-targets]
     (when-not (file-exists? (fuzz-target-bin t))
       (build-fuzz-target t)))
@@ -630,7 +458,7 @@
         (let [r (sh (fuzz-target-bin t) "fuzz" "fuzz/corpus"
                     "--secs" secs "--seed" seed "--artifacts" art)]
           (println (:out r))
-          (when-not (= 0 (:exit r))
+          (when-not (zero? (:exit r))
             (println (str "  CRASH in " t " -- reproducer at " art "/.current"))
             (swap! failed conj t)))))
     (if (empty? @failed)

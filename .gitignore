@@ -13,7 +13,9 @@ fuzz/fuzz_reader
 fuzz/fuzz_image
 fuzz/fuzz_store
 mino-bin
-mino/src/core_mino.h
+
+# mino amalgamation (generated per submodule pin by `task build`)
+mino/dist/
 
 # OS noise
 .DS_Store

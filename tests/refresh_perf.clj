@@ -16,9 +16,10 @@
 ;;                              Performance / Landing page tables
 ;;
 ;; Re-invoke whenever the mino submodule moves to a new SHA. The
-;; script (re)builds tests/embed_init_bench and tests/min_embed from
-;; the submodule's source on every run, so footprint and init
-;; numbers always reflect the currently-checked-out mino.
+;; script (re)builds tests/embed_init_bench and tests/min_embed against
+;; the mino amalgamation (mino/dist/mino.c) on every run, so footprint
+;; and init numbers always reflect the currently-checked-out mino. Run
+;; `./mino/mino task build` first: it materializes mino/dist/.
 
 (require '[clojure.string :as str])
 
@@ -36,16 +37,14 @@
 (def ^:private cold-runs           50)
 (def ^:private init-runs           50)
 
-(def ^:private includes
-  ["-Imino/src" "-Imino/src/public" "-Imino/src/runtime"
-   "-Imino/src/gc" "-Imino/src/eval" "-Imino/src/collections"
-   "-Imino/src/prim" "-Imino/src/async" "-Imino/src/interop"
-   "-Imino/src/diag" "-Imino/src/vendor/imath"])
+(def ^:private includes ["-Imino/dist"])
+
+;; The mino amalgamation TU. Every harness binary compiles this one file
+;; and includes mino/dist/mino.h only (ADR-62); nothing reaches into
+;; mino's private src/** tree.
+(def ^:private dist-c "mino/dist/mino.c")
 
 ;; ---- Helpers -------------------------------------------------------
-
-(defn- file-exists? [path]
-  (zero? (:exit (sh "test" "-e" path))))
 
 (defn- file-size [path]
   ;; BSD stat (macOS) uses -f%z; GNU stat (Linux) uses -c%s. The
@@ -61,25 +60,6 @@
 (defn- mino-version []
   (let [r (sh mino-bin "-V")]
     (str/trim (str (:out r)))))
-
-(defn- find-c-sources []
-  ;; Mirror the mino Makefile's SRCS list: stencil sources under
-  ;; src/eval/bc/stencils/ are compiled separately for byte
-  ;; extraction and never linked into a normal binary. Including
-  ;; them here pulls in duplicate stencil_op_* symbols and references
-  ;; to the chain marker that the runtime patches at JIT-emit time,
-  ;; not at link time. Filter the stencils directory out so the bench
-  ;; build matches the production build.
-  (let [r     (sh "find" "mino/src" "-name" "*.c")
-        lines (-> r :out str/trim (str/split "\n"))]
-    (->> lines
-         (remove #(re-find #"/stencils/" %))
-         vec)))
-
-(defn- find-objs []
-  (let [r (sh "find" "mino/src" "-name" "*.o")]
-    (let [s (str/trim (str (:out r)))]
-      (if (= s "") [] (str/split s "\n")))))
 
 (defn- run-cc!
   "Invoke cc with the listed args; throw with stderr if it fails."
@@ -103,14 +83,10 @@
 
 (defn- build-init-bench! []
   (println "  building tests/embed_init_bench")
-  (let [objs (find-objs)
-        srcs (find-c-sources)
-        unit (if (seq objs) objs srcs)]
-    (run-cc! (concat ["-std=c99" "-O2"]
-                     includes
-                     ["-o" init-bench-bin "tests/embed_init_bench.c"]
-                     unit
-                     ["-lm" "-lpthread"]))))
+  (run-cc! (concat ["-std=c99" "-O2"]
+                   includes
+                   ["-o" init-bench-bin "tests/embed_init_bench.c" dist-c]
+                   ["-lm" "-lpthread"])))
 
 (defn- dead-code-link-flag []
   ;; macOS ld (Mach-O) does not accept --gc-sections; the Mach-O
@@ -132,17 +108,16 @@
         common     (concat ["-std=c99" "-O2"
                             "-ffunction-sections" "-fdata-sections"]
                            includes)
-        link       [dead-strip "-lm" "-lpthread"]
-        srcs       (find-c-sources)]
+        link       [dead-strip "-lm" "-lpthread"]]
     (println (str "  building " no-jit-bin " (no JIT, " dead-strip ")"))
     (run-cc! (concat common
-                     ["-o" no-jit-bin source-c]
-                     srcs link))
+                     ["-o" no-jit-bin source-c dist-c]
+                     link))
     (run-strip! no-jit-bin no-jit-bin)
     (println (str "  building " jit-bin    " (+JIT, "  dead-strip ")"))
     (run-cc! (concat common
-                     ["-DMINO_CPJIT=1" "-o" jit-bin source-c]
-                     srcs link))
+                     ["-DMINO_CPJIT=1" "-o" jit-bin source-c dist-c]
+                     link))
     (run-strip! jit-bin jit-bin)))
 
 (defn- build-min-embed! []
@@ -226,18 +201,12 @@
   [paths]
   (reduce + 0 (keep file-size (filter seq paths))))
 
-(defn- c-source-bytes []
-  (let [r (sh "find" "mino/src" "-name" "*.c" "-not" "-path"
-              "*/vendor/*")]
-    (sum-file-sizes (str/split (:out r) "\n"))))
-
-(defn- vendor-bytes []
-  (let [r (sh "find" "mino/src/vendor" "-type" "f")]
-    (sum-file-sizes (str/split (:out r) "\n"))))
-
-(defn- stdlib-header-bytes []
-  (let [r (sh "find" "mino/src" "-name" "lib_*.h")]
-    (sum-file-sizes (str/split (:out r) "\n"))))
+(defn- amalgam-c-bytes []
+  ;; The single-file distribution is the source-side boundary now
+  ;; (ADR-62): mino ships dist/mino.c, and its byte count is the honest
+  ;; source-footprint number consumers see, superseding the private
+  ;; src/** globs.
+  (file-size dist-c))
 
 (defn- which [bin]
   (let [r (sh "which" bin)]
@@ -253,10 +222,13 @@
         local-abs (:out (sh "realpath" mino-bin))]
     (when (and bin (not= bin (str/trim (or local-abs ""))))
       (let [tmp "results/.tmp_installed_stripped"]
-        (when (zero? (:exit (sh "strip" "--strip-all" "-o" tmp bin)))
+        (try
+          (run-strip! bin tmp)
           (let [bytes (file-size tmp)]
             (sh "rm" "-f" tmp)
-            {:path bin :stripped-bytes bytes}))))))
+            {:path bin :stripped-bytes bytes})
+          (catch Exception _
+            nil))))))
 
 (defn- footprint []
   (let [tmp-full     "results/.tmp_stripped"
@@ -277,10 +249,7 @@
                           :min-embed-jit-bytes      minemb-jit
                           :standalone-lean-bytes    lean
                           :standalone-jit-bytes     full
-                          :c-source-bytes           (c-source-bytes)
-                          :vendor-bytes             (vendor-bytes)
-                          :stdlib-header-bytes      (stdlib-header-bytes)
-                          :core-clj-bytes           (file-size "mino/src/core.clj")}]
+                          :amalgam-c-bytes          (amalgam-c-bytes)}]
       (sh "rm" "-f" tmp-full tmp-lean)
       (if released
         (assoc base :released-binary released)
@@ -348,19 +317,13 @@
       "  Standalone + JIT (mino) : "
         (bytes-kb (:standalone-jit-bytes footprint)) "\n"
       (if-let [rel (:released-binary footprint)]
-        (str "  released binary at " (:path rel) " (strip --strip-all) : "
+        (str "  released binary at " (:path rel) " (strip -o) : "
              (bytes-kb (:stripped-bytes rel)) "\n")
         "  released binary on PATH                          : (not present)\n")
       "\n"
       "-- Source side --\n"
-      "  C source tree (no vendor) : "
-        (bytes-kb (:c-source-bytes footprint)) "\n"
-      "  vendor (imath)            : "
-        (bytes-kb (:vendor-bytes footprint)) "\n"
-      "  bundled stdlib headers    : "
-        (bytes-kb (:stdlib-header-bytes footprint)) "\n"
-      "  core.clj source           : "
-        (bytes-kb (:core-clj-bytes footprint)) "\n\n"
+      "  amalgamation (dist/mino.c) : "
+        (bytes-kb (:amalgam-c-bytes footprint)) "\n\n"
       "-- Bench suite tail (last 30 lines) --\n"
       bench-tail "\n")))
 
@@ -373,7 +336,11 @@
 (when-not (file-exists? mino-bin)
   (println (str "  error: " mino-bin
                 " not found. Build the submodule first."))
-  (System/exit 1))
+  (exit 1))
+(when-not (file-exists? dist-c)
+  (println (str "  error: " dist-c
+                " not found. Run `./mino/mino task build` first."))
+  (exit 1))
 
 (sh "mkdir" "-p" "results")
 
