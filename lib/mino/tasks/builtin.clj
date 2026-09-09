@@ -27,14 +27,20 @@
   ;; reach it -- e.g. miniz's upstream headers include miniz_export.h
   ;; from -Imino/src/vendor/miniz -- so keep this in lockstep with the
   ;; canonical list rather than trimming it to what one target needs.
-  (str "-Imino/src -Imino/src/public -Imino/src/runtime -Imino/src/gc"
-       " -Imino/src/eval -Imino/src/values -Imino/src/collections"
+  (str "-Imino/src -Imino/src/generated -Imino/src/public"
+       " -Imino/src/runtime -Imino/src/gc -Imino/src/eval"
+       " -Imino/src/read -Imino/src/print -Imino/src/names -Imino/src/state"
+       " -Imino/src/values -Imino/src/collections"
        " -Imino/src/prim -Imino/src/async -Imino/src/interop"
        " -Imino/src/diag -Imino/src/vendor/imath"
        " -Imino/src/vendor/bearssl -Imino/src/vendor/bearssl/inc"
        " -Imino/src/vendor/miniz -Imino/src/vendor/miniz/upstream"))
+;; -DMINO_CPJIT=1 and -fno-strict-aliasing mirror mino's Makefile CFLAGS:
+;; the JIT define keeps benches on the same runtime config CI ships, and
+;; the aliasing flag matches the runtime's type-punning assumptions.
 (def ^:private cflags  (str/split (or (getenv "CFLAGS")
-                                  (str "-std=c99 -Wall -Wpedantic -Wextra -O2 "
+                                  (str "-std=c99 -Wall -Wpedantic -Wextra -O2"
+                                       " -fno-strict-aliasing -DMINO_CPJIT=1 "
                                        include-flags)) " "))
 (def ^:private ldflags (let [v (or (getenv "LDFLAGS") "")]
                          (if (= v "") [] (str/split v " "))))
@@ -63,8 +69,9 @@
 ;; host Makefile drops them the same way.
 (def ^:private mino-src-dirs
   #{"mino/src/eval" "mino/src/eval/bc" "mino/src/eval/bc/jit"
-    "mino/src/diag" "mino/src/runtime" "mino/src/gc" "mino/src/public"
-    "mino/src/values" "mino/src/collections" "mino/src/prim"
+    "mino/src/read" "mino/src/print" "mino/src/diag"
+    "mino/src/names" "mino/src/state" "mino/src/gc" "mino/src/public"
+    "mino/src/values" "mino/src/collections"
     "mino/src/interop" "mino/src/regex" "mino/src/async"
     "mino/src/vendor/imath" "mino/src/vendor/bearssl"
     "mino/src/vendor/miniz"})
@@ -72,13 +79,30 @@
 (defn- parent-dir [p]
   (str/join "/" (butlast (str/split p #"/"))))
 
+;; The prim tree is one level of domain subdirs (src/prim/<domain>/*.c),
+;; matching mino/Makefile's `src/prim/*/*.c` glob. There are no .c files
+;; directly in src/prim, and nothing deeper is compiled.
+(defn- prim-domain-src? [p]
+  (and (str/starts-with? p "mino/src/prim/")
+       (= 5 (count (str/split p #"/")))))
+
 (def ^:private mino-srcs
   (vec (filter (fn [p]
                  (and (str/ends-with? p ".c")
-                      (contains? mino-src-dirs (parent-dir p))))
+                      (or (contains? mino-src-dirs (parent-dir p))
+                          (prim-domain-src? p))))
                (file-seq "mino/src"))))
 
-(def ^:private mino-bin-srcs (conj mino-srcs "mino/main.c"))
+;; src/cli/*.c carries main(); it links into the mino binary but must
+;; stay out of mino-srcs so each C benchmark links its own main against
+;; the library objects.
+(def ^:private mino-cli-srcs
+  (vec (filter (fn [p]
+                 (and (str/ends-with? p ".c")
+                      (= "mino/src/cli" (parent-dir p))))
+               (file-seq "mino/src"))))
+
+(def ^:private mino-bin-srcs (into mino-srcs mino-cli-srcs))
 
 ;; C benchmark binaries
 (def ^:private c-benchmarks

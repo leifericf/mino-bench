@@ -170,12 +170,12 @@ int main(void)
             env);
     });
 
-    /* --- Ref/GC --- */
-    printf("\nRef/GC:\n");
-    BENCH("mino_ref + deref + unref", 100000, {
-        mino_ref *r = mino_ref_new(S, mino_int(S, 42));
-        (void)mino_deref(r);
-        mino_unref(S, r);
+    /* --- Root/GC --- */
+    printf("\nRoot/GC:\n");
+    BENCH("mino_root + get + unroot", 100000, {
+        mino_root *r = mino_root_new(S, mino_int(S, 42));
+        (void)mino_root_get(r);
+        mino_unroot(S, r);
     });
 
     /* --- Clone --- */
