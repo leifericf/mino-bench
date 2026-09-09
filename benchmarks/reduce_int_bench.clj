@@ -16,8 +16,12 @@
 (bench/run-suite "Reduce int-acc fast lane"
   [["reduce-sum-range-1m"    50
     (fn [] (reduce + (range 1000000)))]
+   ;; unchecked-multiply wraps on int64 overflow; plain * would throw
+   ;; on the running product (999! is astronomically out of range), so
+   ;; the wrapping variant is what exercises the multiply fast lane at
+   ;; this scale.
    ["reduce-mul-range-1k"    1000
-    (fn [] (reduce * (range 1 1000)))]
+    (fn [] (reduce unchecked-multiply (range 1 1000)))]
    ["reduce-sum-vec-100k"    100
     (fn [] (reduce + v100k))]
    ["reduce-sum-vec-1k"      10000
