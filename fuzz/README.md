@@ -55,3 +55,12 @@ libFuzzer does not.
 `.github/workflows/fuzz.yml`: every push/PR runs both corpus smokes
 (reader stdin + all four zig targets). The scheduled nightly run adds
 the 24h libFuzzer reader job and the time-boxed `fuzz-targets` sweep.
+
+## Why this lives in mino-bench, not mino-tests
+
+These are C-boundary fuzzers: they link mino's C objects and `mino.h`
+directly and need the sanitizer and libFuzzer toolchain this repo already
+stands up for the benchmarks. mino-tests holds the mino-level cousins —
+generative and adversarial probes that run `.clj` through the mino binary
+(`tests/adv/`, the migrated reader robustness tests, `gc-fuzz`). Same word,
+different layer; neither duplicates the other.
