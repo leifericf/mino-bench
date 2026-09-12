@@ -91,7 +91,7 @@
 
    ;; regex
    ["re-find-simple" "re-find on short string" 10000
-    (fn [] (re-find "[0-9]+" "abc123def"))]])
+    (fn [] (re-find (re-pattern "[0-9]+") "abc123def"))]])
 
 (defn- run-once [[id _ iter body-fn]]
   (let [r (bench/bench id iter body-fn)]

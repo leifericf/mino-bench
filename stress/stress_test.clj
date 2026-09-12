@@ -272,10 +272,10 @@
 
 (deftest regex-basic-patterns
   (testing "re-find and re-matches"
-    (is (= "123" (re-find "[0-9]+" "abc123def")))
-    (is (= nil (re-find "[0-9]+" "no digits")))
-    (is (= "hello" (re-matches "[a-z]+" "hello")))
-    (is (= nil (re-matches "[a-z]+" "Hello")))))
+    (is (= "123" (re-find (re-pattern "[0-9]+") "abc123def")))
+    (is (= nil (re-find (re-pattern "[0-9]+") "no digits")))
+    (is (= "hello" (re-matches (re-pattern "[a-z]+") "hello")))
+    (is (= nil (re-matches (re-pattern "[a-z]+") "Hello")))))
 
 ;; --- Higher-order function stress ---
 

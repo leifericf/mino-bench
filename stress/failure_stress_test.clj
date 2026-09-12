@@ -27,8 +27,8 @@
 (deftest stress-regex-compile-match
   (testing "repeated regex compile/match (50 cycles)"
     (dotimes [_ 50]
-      (is (= "123" (re-find "\\d+" "abc123def")))
-      (is (= nil (re-find "zzz" "abc"))))))
+      (is (= "123" (re-find (re-pattern "\\d+") "abc123def")))
+      (is (= nil (re-find (re-pattern "zzz") "abc"))))))
 
 (deftest stress-map-assoc
   (testing "build map with repeated assoc (30 keys)"
